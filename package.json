@@ -33,12 +33,12 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/yourusername/fileweaver.git"
+    "url": "git+https://github.com/c2developers/fileweaver.git"
   },
   "bugs": {
-    "url": "https://github.com/yourusername/fileweaver/issues"
+    "url": "https://github.com/c2developers/fileweaver/issues"
   },
-  "homepage": "https://github.com/yourusername/fileweaver#readme",
+  "homepage": "https://github.com/c2developers/fileweaver#readme",
   "engines": {
     "node": ">=14.0.0"
   }
