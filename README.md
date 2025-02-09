@@ -157,5 +157,5 @@ For support and questions, please [open an issue](https://github.com/c2developer
 ---
 
 <div align="center">
-Made with ❤️ by [Your Name]
+Made with ❤️ by C2Developers
 </div>
