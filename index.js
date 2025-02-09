@@ -3,17 +3,54 @@
 import { program } from 'commander';
 import fs from 'fs/promises';
 import path from 'path';
-import glob from 'glob';
-import { promisify } from 'util';
+import { glob } from 'glob';
+import ora from 'ora';
+import cliProgress from 'cli-progress';
+import chalk from 'chalk';
 
-const globPromise = promisify(glob);
+function generateTree(files, baseDir) {
+  // Ordenar los archivos para una mejor visualización
+  files = files.sort();
+  
+  // Convertir rutas absolutas a relativas
+  const relativeFiles = files.map(file => path.relative(baseDir, file));
+  
+  // Crear estructura de árbol
+  const tree = {};
+  for (const file of relativeFiles) {
+    const parts = file.split(path.sep);
+    let current = tree;
+    
+    for (const part of parts) {
+      if (!current[part]) {
+        current[part] = {};
+      }
+      current = current[part];
+    }
+  }
 
-// Colorear la salida de consola
-const colors = {
-  success: '\x1b[32m',
-  error: '\x1b[31m',
-  reset: '\x1b[0m'
-};
+  // Función para generar la representación en string del árbol
+  function printTree(node, prefix = '', isLast = true) {
+    const entries = Object.entries(node);
+    let result = '';
+
+    for (let [i, [key, value]] of entries.entries()) {
+      const isLastEntry = i === entries.length - 1;
+      const connector = isLastEntry ? '└── ' : '├── ';
+      const newPrefix = prefix + (isLastEntry ? '    ' : '│   ');
+      
+      result += prefix + connector + chalk.cyan(key) + '\n';
+      
+      if (Object.keys(value).length > 0) {
+        result += printTree(value, newPrefix, isLastEntry);
+      }
+    }
+    
+    return result;
+  }
+
+  return printTree(tree);
+}
 
 program
   .name('fileweaver')
@@ -29,78 +66,110 @@ program
 const options = program.opts();
 
 async function weaveFiles() {
+  const spinner = ora();
+  const progressBar = new cliProgress.SingleBar({
+    format: chalk.cyan('{bar}') + ' | {percentage}% | {value}/{total} Files | {file}',
+    barCompleteChar: '\u2588',
+    barIncompleteChar: '\u2591',
+    hideCursor: true
+  });
+
   try {
-    // Validar el directorio
+    // Iniciando búsqueda
+    spinner.start(chalk.blue('Scanning directory...'));
+    
     const directory = path.resolve(options.directory);
     const stats = await fs.stat(directory);
     
     if (!stats.isDirectory()) {
-      console.error(colors.error + 'Error: Specified path is not a directory' + colors.reset);
+      spinner.fail(chalk.red('Error: Specified path is not a directory'));
       process.exit(1);
     }
 
-    // Construir el patrón de búsqueda
+    // Buscar archivos
     const searchPattern = path.join(directory, '**/*');
-    
-    // Obtener lista de archivos
-    let files = await globPromise(searchPattern, { nodir: true });
+    let files = await glob(searchPattern, { 
+      nodir: true,
+      ignore: ['**/node_modules/**'],
+      absolute: true
+    });
 
-    // Aplicar filtro regex si se especificó
+    // Aplicar filtros
     if (options.regex) {
+      spinner.text = chalk.blue('Applying regex filter...');
       try {
         const regex = new RegExp(options.regex);
         files = files.filter(file => regex.test(path.basename(file)));
       } catch (error) {
-        console.error(colors.error + `Error: Invalid regex pattern: ${error.message}` + colors.reset);
+        spinner.fail(chalk.red(`Error: Invalid regex pattern: ${error.message}`));
         process.exit(1);
       }
     }
 
-    // Aplicar filtro de ignorar si se especificó
     if (options.ignoreregex) {
+      spinner.text = chalk.blue('Applying ignore patterns...');
       try {
         const ignoreRegex = new RegExp(options.ignoreregex);
-        files = files.filter(file => !ignoreRegex.test(path.basename(file)));
+        files = files.filter(file => {
+          const relativePath = path.relative(directory, file);
+          return !ignoreRegex.test(relativePath) && !ignoreRegex.test(file);
+        });
       } catch (error) {
-        console.error(colors.error + `Error: Invalid ignore regex pattern: ${error.message}` + colors.reset);
+        spinner.fail(chalk.red(`Error: Invalid ignore regex pattern: ${error.message}`));
         process.exit(1);
       }
     }
 
     if (files.length === 0) {
-      console.error(colors.error + 'Error: No files found matching the specified patterns' + colors.reset);
+      spinner.fail(chalk.red('Error: No files found matching the specified patterns'));
       process.exit(1);
     }
+
+    spinner.succeed(chalk.green(`Found ${files.length} files to process`));
+
+    // Mostrar árbol de archivos
+    console.log(chalk.yellow('\nFiles to be processed:'));
+    console.log(generateTree(files, directory));
+
+    // Iniciar la barra de progreso
+    progressBar.start(files.length, 0, { file: 'Starting...' });
 
     // Leer y concatenar archivos
     let output = '';
     let processedFiles = 0;
+
     for (const file of files) {
       try {
         const content = await fs.readFile(file, 'utf8');
         if (options.headers) {
           output += `\n${'='.repeat(50)}\n`;
-          output += `File: ${path.basename(file)}\n`;
+          output += `File: ${path.relative(directory, file)}\n`;
           output += `${'='.repeat(50)}\n\n`;
         }
         output += content + '\n';
         processedFiles++;
+        
+        // Actualizar barra de progreso
+        progressBar.update(processedFiles, { 
+          file: chalk.blue(path.basename(file))
+        });
       } catch (error) {
-        console.error(colors.error + `Warning: Could not read file ${file}: ${error.message}` + colors.reset);
+        console.error(chalk.red(`\nWarning: Could not read file ${file}: ${error.message}`));
       }
     }
 
+    progressBar.stop();
+
     // Escribir resultado
+    spinner.start(chalk.blue('Saving output file...'));
     const outputPath = path.resolve(options.output);
     await fs.writeFile(outputPath, output.trim());
     
-    console.log(
-      colors.success +
-      `Successfully processed ${processedFiles} file${processedFiles !== 1 ? 's' : ''} and saved to ${outputPath}` +
-      colors.reset
-    );
+    spinner.succeed(chalk.green(
+      `Successfully processed ${processedFiles} file${processedFiles !== 1 ? 's' : ''} and saved to ${outputPath}`
+    ));
   } catch (error) {
-    console.error(colors.error + `Error: ${error.message}` + colors.reset);
+    spinner.fail(chalk.red(`Error: ${error.message}`));
     process.exit(1);
   }
 }

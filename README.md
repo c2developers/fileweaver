@@ -7,7 +7,7 @@
 ![License](https://img.shields.io/npm/l/fileweaver)
 ![Node](https://img.shields.io/node/v/fileweaver)
 
-A powerful CLI tool for weaving files together with advanced pattern matching capabilities.
+A powerful CLI tool for weaving files together with advanced pattern matching capabilities, featuring visual progress and tree view of processed files.
 
 [Installation](#installation) •
 [Usage](#usage) •
@@ -23,6 +23,9 @@ A powerful CLI tool for weaving files together with advanced pattern matching ca
 - 📂 **Directory Support**: Process files from any directory
 - 📑 **File Headers**: Option to include original filenames in the output
 - 🎯 **Flexible Output**: Specify custom output location and filename
+- 🌳 **Tree View**: Visual representation of processed files
+- 📊 **Progress Bar**: Real-time processing visualization
+- 🎨 **Colored Output**: Enhanced readability with color-coded messages
 
 ## 🚀 Installation
 
@@ -50,48 +53,87 @@ fileweaver [options]
 
 ## 📋 Examples
 
-### Basic Usage
+### Concatenate JavaScript Files
 
-Concatenate all text files in the current directory:
 ```bash
-fileweaver -r "\.txt$" -o result.txt
+fileweaver -d . -r "\.js$" -ir "node_modules" -h true -o combined.js
 ```
 
-### With Headers
+This will show a tree view of files to be processed:
+```
+Files to be processed:
+├── src
+│   ├── index.js
+│   └── utils
+│       ├── helper.js
+│       └── validator.js
+└── index.js
 
-Include filenames as headers in the output:
-```bash
-fileweaver -r "\.md$" -h -o documentation.md
+[==================] | 100% | 4/4 Files | validator.js
+✔ Successfully processed 4 files and saved to combined.js
 ```
 
-### Ignore Patterns
+### Process Multiple File Types
 
-Concatenate all files except logs and temporary files:
 ```bash
-fileweaver -ir "\.(log|tmp)$" -o combined.txt
+fileweaver -d ./src -r "\.(js|ts)$" -h true -o bundle.js
 ```
 
-### Custom Directory
+Output tree:
+```
+Files to be processed:
+└── src
+    ├── components
+    │   ├── Button.ts
+    │   └── Input.js
+    └── utils
+        ├── helpers.js
+        └── types.ts
+```
 
-Process files from a specific directory:
+### Exclude Multiple Patterns
+
 ```bash
-fileweaver -d ./src -r "\.js$" -o combined.js
+fileweaver -d . -r "\.js$" -ir "node_modules|dist|test" -o prod.js
+```
+
+Tree view:
+```
+Files to be processed:
+├── src
+│   ├── main.js
+│   └── config.js
+└── index.js
+```
+
+### With Headers in Output
+
+The `-h` flag adds file headers to the output:
+```
+==================================================
+File: src/main.js
+==================================================
+// Main file content here...
+
+==================================================
+File: src/config.js
+==================================================
+// Config file content here...
 ```
 
 ## 🔍 Advanced Usage
 
 ### Nested Directories
 
-Process files in nested directories:
+Process files in nested directories and exclude specific patterns:
 ```bash
-fileweaver -d ./project -r "\.css$" -o styles.css
+fileweaver -d ./project -r "\.css$" -ir "vendor|temp" -o styles.css
 ```
 
-### Multiple Patterns
+### Multiple File Types with Complex Patterns
 
-Combine multiple patterns:
 ```bash
-fileweaver -r "\.(html|ejs)$" -ir "temp_" -o templates.html
+fileweaver -r "\.(html|ejs)$" -ir "temp_|draft_" -h true -o templates.html
 ```
 
 ## 🤝 Contributing
