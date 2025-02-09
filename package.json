@@ -21,7 +21,7 @@
     "utilities",
     "file-management"
   ],
-  "author": "Your Name",
+  "author": "c2developers",
   "license": "MIT",
   "dependencies": {
     "ascii-tree": "^0.3.0",
