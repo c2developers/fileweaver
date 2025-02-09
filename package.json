@@ -1,0 +1,41 @@
+{
+  "name": "fileweaver",
+  "version": "0.0.1-dev",
+  "description": "A CLI tool to weave files together based on regex patterns",
+  "main": "index.js",
+  "type": "module",
+  "bin": {
+    "fileweaver": "./index.js"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "cli",
+    "concatenate",
+    "files",
+    "regex",
+    "merge",
+    "combine",
+    "weave",
+    "utilities",
+    "file-management"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "dependencies": {
+    "commander": "^11.0.0",
+    "glob": "^10.3.3"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yourusername/fileweaver.git"
+  },
+  "bugs": {
+    "url": "https://github.com/yourusername/fileweaver/issues"
+  },
+  "homepage": "https://github.com/yourusername/fileweaver#readme",
+  "engines": {
+    "node": ">=14.0.0"
+  }
+}
