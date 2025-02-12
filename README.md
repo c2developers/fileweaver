@@ -23,9 +23,11 @@ A powerful CLI tool for weaving files together with advanced pattern matching ca
 - 📂 **Directory Support**: Process files from any directory
 - 📑 **File Headers**: Option to include original filenames in the output
 - 🎯 **Flexible Output**: Specify custom output location and filename
-- 🌳 **Tree View**: Visual representation of processed files
+- 🌳 **Tree View**: Visual representation of processed files with optional inclusion in output
 - 📊 **Progress Bar**: Real-time processing visualization
 - 🎨 **Colored Output**: Enhanced readability with color-coded messages
+- 📝 **Custom Prompts**: Add custom prompts to the output file
+- 🗂️ **Directory Tree**: Include directory structure in the output file
 
 ## 🚀 Installation
 
@@ -48,30 +50,58 @@ fileweaver [options]
 | `-d, --directory <path>` | Directory path | Current directory |
 | `-h, --headers` | Add file headers to content | false |
 | `-o, --output <file>` | Output file name | output.txt |
+| `-t, --tree` | Include directory tree in output file | false |
+| `-p, --prompt <text>` | Add custom prompt to output file | - |
 | `--version` | Show version number | - |
 | `--help` | Show help | - |
 
 ## 📋 Examples
 
-### Concatenate JavaScript Files
+### Basic File Concatenation with Tree
 
 ```bash
-fileweaver -d . -r "\.js$" -ir "node_modules" -h true -o combined.js
+fileweaver -d . -r "\.js$" -t true -o combined.js
 ```
 
-This will show a tree view of files to be processed:
+This will include a tree view in the output file:
 ```
-Files to be processed:
+==================================================
+Directory Tree:
+==================================================
 ├── src
 │   ├── index.js
 │   └── utils
 │       ├── helper.js
 │       └── validator.js
 └── index.js
-
-[==================] | 100% | 4/4 Files | validator.js
-✔ Successfully processed 4 files and saved to combined.js
 ```
+
+### Add Custom Prompt
+
+```bash
+fileweaver -r "\.md$" -p "Process these markdown files for documentation" -o docs.md
+```
+
+Output will include:
+```
+==================================================
+Prompt:
+==================================================
+Process these markdown files for documentation
+```
+
+### Combine Multiple Features
+
+```bash
+fileweaver -d ./src -r "\.(js|ts)$" -h true -t true -p "Review this code" -o bundle.js
+```
+
+This will:
+- Process all .js and .ts files
+- Add headers for each file
+- Include the directory tree
+- Add the specified prompt
+- Save everything to bundle.js
 
 ### Process Multiple File Types
 
@@ -123,17 +153,17 @@ File: src/config.js
 
 ## 🔍 Advanced Usage
 
-### Nested Directories
+### Nested Directories with Tree and Prompt
 
-Process files in nested directories and exclude specific patterns:
+Process files in nested directories, include tree structure, and add a processing prompt:
 ```bash
-fileweaver -d ./project -r "\.css$" -ir "vendor|temp" -o styles.css
+fileweaver -d ./project -r "\.css$" -ir "vendor|temp" -t true -p "Combine all CSS files" -o styles.css
 ```
 
-### Multiple File Types with Complex Patterns
+### Complex Pattern Matching with Custom Output
 
 ```bash
-fileweaver -r "\.(html|ejs)$" -ir "temp_|draft_" -h true -o templates.html
+fileweaver -r "\.(html|ejs)$" -ir "temp_|draft_" -h true -t true -o templates.html
 ```
 
 ## 🤝 Contributing

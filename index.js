@@ -164,16 +164,21 @@ async function weaveFiles() {
     }
 
 
-    if(options.tree){
-      output += `Tree
-      ${tree}`
-    }
-
-
-    if(options.prompt){
-      output += `============================================
-      ${options.prompt}`
-    }
+      // Agregar árbol si está habilitada la opción
+      if (options.tree) {
+        output += '\n' + '='.repeat(50) + '\n';
+        output += 'Directory Tree:\n';
+        output += '='.repeat(50) + '\n\n';
+        output += tree;
+      }
+  
+      // Agregar prompt si está especificado
+      if (options.prompt) {
+        output += '\n' + '='.repeat(50) + '\n';
+        output += 'Prompt:\n';
+        output += '='.repeat(50) + '\n\n';
+        output += options.prompt + '\n';
+      }
 
     progressBar.stop();
 
