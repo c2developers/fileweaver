@@ -57,6 +57,8 @@ program
   .description('A powerful CLI tool for weaving files together with advanced pattern matching capabilities')
   .version('1.0.0')
   .option('-r, --regex <pattern>', 'regex pattern to match files')
+  .option('-t, --tree <true|false>', 'add tree to output file')
+  .option('-p, --prompt <prompt>', 'add prompt to output file')
   .option('-ir, --ignoreregex <pattern>', 'regex pattern to ignore files')
   .option('-d, --directory <path>', 'directory path', process.cwd())
   .option('-h, --headers', 'add file headers to content', false)
@@ -127,9 +129,11 @@ async function weaveFiles() {
 
     spinner.succeed(chalk.green(`Found ${files.length} files to process`));
 
+    const tree = generateTree(files, directory);
+
     // Mostrar árbol de archivos
     console.log(chalk.yellow('\nFiles to be processed:'));
-    console.log(generateTree(files, directory));
+    console.log(tree);
 
     // Iniciar la barra de progreso
     progressBar.start(files.length, 0, { file: 'Starting...' });
@@ -147,6 +151,7 @@ async function weaveFiles() {
           output += `${'='.repeat(50)}\n\n`;
         }
         output += content + '\n';
+
         processedFiles++;
         
         // Actualizar barra de progreso
@@ -156,6 +161,18 @@ async function weaveFiles() {
       } catch (error) {
         console.error(chalk.red(`\nWarning: Could not read file ${file}: ${error.message}`));
       }
+    }
+
+
+    if(options.tree){
+      output += `Tree
+      ${tree}`
+    }
+
+
+    if(options.prompt){
+      output += `============================================
+      ${options.prompt}`
     }
 
     progressBar.stop();
