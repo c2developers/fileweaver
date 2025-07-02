@@ -52,10 +52,165 @@ function generateTree(files, baseDir) {
   return printTree(tree);
 }
 
+// Función para parsear imports de un archivo
+function parseImports(content, filePath) {
+  const imports = new Set();
+  const lines = content.split('\n');
+  
+  for (const line of lines) {
+    const trimmedLine = line.trim();
+    
+    // ES6 imports
+    const es6ImportMatch = trimmedLine.match(/^import\s+.*?from\s+['"`]([^'"`]+)['"`]/);
+    if (es6ImportMatch) {
+      imports.add(es6ImportMatch[1]);
+      continue;
+    }
+    
+    // CommonJS require
+    const commonJSMatch = trimmedLine.match(/(?:const|let|var)\s+.*?=\s+require\(['"`]([^'"`]+)['"`]\)/);
+    if (commonJSMatch) {
+      imports.add(commonJSMatch[1]);
+      continue;
+    }
+    
+    // require directo
+    const directRequireMatch = trimmedLine.match(/require\(['"`]([^'"`]+)['"`]\)/);
+    if (directRequireMatch) {
+      imports.add(directRequireMatch[1]);
+      continue;
+    }
+    
+    // Dynamic imports
+    const dynamicImportMatch = trimmedLine.match(/import\(['"`]([^'"`]+)['"`]\)/);
+    if (dynamicImportMatch) {
+      imports.add(dynamicImportMatch[1]);
+      continue;
+    }
+  }
+  
+  return Array.from(imports);
+}
+
+// Función para verificar si un import es una dependencia local
+function isLocalDependency(importPath) {
+  // Si empieza con ./ o ../ es local
+  if (importPath.startsWith('./') || importPath.startsWith('../')) {
+    return true;
+  }
+  
+  // Si empieza con / es absoluto (consideramos local)
+  if (importPath.startsWith('/')) {
+    return true;
+  }
+  
+  // Si no tiene / es probablemente un paquete npm
+  if (!importPath.includes('/')) {
+    return false;
+  }
+  
+  // Si empieza con @ y no tiene más /, es scoped package
+  if (importPath.startsWith('@') && importPath.split('/').length === 2) {
+    return false;
+  }
+  
+  // En otros casos, asumimos que es local
+  return true;
+}
+
+// Función para resolver la ruta de un import
+async function resolveImportPath(importPath, currentFilePath) {
+  const currentDir = path.dirname(currentFilePath);
+  let resolvedPath;
+  
+  if (path.isAbsolute(importPath)) {
+    resolvedPath = importPath;
+  } else {
+    resolvedPath = path.resolve(currentDir, importPath);
+  }
+  
+  // Intentar diferentes extensiones si el archivo no existe
+  const extensions = ['', '.js', '.jsx', '.ts', '.tsx', '.mjs', '.cjs'];
+  
+  for (const ext of extensions) {
+    const fullPath = resolvedPath + ext;
+    try {
+      const stats = await fs.stat(fullPath);
+      if (stats.isFile()) {
+        return fullPath;
+      }
+    } catch (error) {
+      // Continuar con la siguiente extensión
+    }
+  }
+  
+  // Intentar como directorio con index
+  const indexExtensions = ['/index.js', '/index.jsx', '/index.ts', '/index.tsx', '/index.mjs', '/index.cjs'];
+  
+  for (const indexExt of indexExtensions) {
+    const indexPath = resolvedPath + indexExt;
+    try {
+      const stats = await fs.stat(indexPath);
+      if (stats.isFile()) {
+        return indexPath;
+      }
+    } catch (error) {
+      // Continuar con la siguiente extensión
+    }
+  }
+  
+  return null;
+}
+
+// Función para seguir imports recursivamente
+async function followImports(entryFile, processedFiles = new Set(), spinner) {
+  const files = [];
+  const queue = [entryFile];
+  
+  while (queue.length > 0) {
+    const currentFile = queue.shift();
+    const normalizedPath = path.resolve(currentFile);
+    
+    if (processedFiles.has(normalizedPath)) {
+      continue;
+    }
+    
+    processedFiles.add(normalizedPath);
+    
+    try {
+      const stats = await fs.stat(normalizedPath);
+      if (!stats.isFile()) {
+        continue;
+      }
+      
+      files.push(normalizedPath);
+      spinner.text = chalk.blue(`Processing: ${path.basename(normalizedPath)}`);
+      
+      const content = await fs.readFile(normalizedPath, 'utf8');
+      const imports = parseImports(content, normalizedPath);
+      
+      for (const importPath of imports) {
+        if (!isLocalDependency(importPath)) {
+          continue;
+        }
+        
+        const resolvedPath = await resolveImportPath(importPath, normalizedPath);
+        if (resolvedPath && !processedFiles.has(path.resolve(resolvedPath))) {
+          queue.push(resolvedPath);
+        }
+      }
+    } catch (error) {
+      console.warn(chalk.yellow(`Warning: Could not process ${normalizedPath}: ${error.message}`));
+    }
+  }
+  
+  return files;
+}
+
 program
   .name('fileweaver')
   .description('A powerful CLI tool for weaving files together with advanced pattern matching capabilities')
-  .version('1.0.0')
+  .version('1.2.0')
   .option('-r, --regex <pattern>', 'regex pattern to match files')
   .option('-t, --tree <true|false>', 'add tree to output file')
   .option('-p, --prompt <prompt>', 'add prompt to output file')
@@ -63,6 +218,7 @@ program
   .option('-d, --directory <path>', 'directory path', process.cwd())
   .option('-h, --headers', 'add file headers to content', false)
   .option('-o, --output <file>', 'output file name', 'output.txt')
+  .option('-f, --follow-imports <file>', 'follow imports from entry file')
   .parse(process.argv);
 
 const options = program.opts();
@@ -77,48 +233,72 @@ async function weaveFiles() {
   });
 
   try {
-    // Iniciando búsqueda
-    spinner.start(chalk.blue('Scanning directory...'));
-    
-    const directory = path.resolve(options.directory);
-    const stats = await fs.stat(directory);
-    
-    if (!stats.isDirectory()) {
-      spinner.fail(chalk.red('Error: Specified path is not a directory'));
-      process.exit(1);
-    }
+    let files = [];
+    let directory = path.resolve(options.directory);
 
-    // Buscar archivos
-    const searchPattern = path.join(directory, '**/*');
-    let files = await glob(searchPattern, { 
-      nodir: true,
-      ignore: ['**/node_modules/**'],
-      absolute: true
-    });
-
-    // Aplicar filtros
-    if (options.regex) {
-      spinner.text = chalk.blue('Applying regex filter...');
+    if (options.followImports) {
+      // Modo follow imports
+      spinner.start(chalk.blue('Following imports...'));
+      
+      const entryFile = path.resolve(options.followImports);
+      
       try {
-        const regex = new RegExp(options.regex);
-        files = files.filter(file => regex.test(path.basename(file)));
+        const stats = await fs.stat(entryFile);
+        if (!stats.isFile()) {
+          spinner.fail(chalk.red('Error: Entry file is not a valid file'));
+          process.exit(1);
+        }
       } catch (error) {
-        spinner.fail(chalk.red(`Error: Invalid regex pattern: ${error.message}`));
+        spinner.fail(chalk.red(`Error: Entry file not found: ${error.message}`));
         process.exit(1);
       }
-    }
-
-    if (options.ignoreregex) {
-      spinner.text = chalk.blue('Applying ignore patterns...');
-      try {
-        const ignoreRegex = new RegExp(options.ignoreregex);
-        files = files.filter(file => {
-          const relativePath = path.relative(directory, file);
-          return !ignoreRegex.test(relativePath) && !ignoreRegex.test(file);
-        });
-      } catch (error) {
-        spinner.fail(chalk.red(`Error: Invalid ignore regex pattern: ${error.message}`));
+      
+      files = await followImports(entryFile, new Set(), spinner);
+      directory = path.dirname(entryFile);
+      
+    } else {
+      // Modo tradicional por directorio
+      spinner.start(chalk.blue('Scanning directory...'));
+      
+      const stats = await fs.stat(directory);
+      
+      if (!stats.isDirectory()) {
+        spinner.fail(chalk.red('Error: Specified path is not a directory'));
         process.exit(1);
+      }
+
+      // Buscar archivos
+      const searchPattern = path.join(directory, '**/*');
+      files = await glob(searchPattern, { 
+        nodir: true,
+        ignore: ['**/node_modules/**'],
+        absolute: true
+      });
+
+      // Aplicar filtros
+      if (options.regex) {
+        spinner.text = chalk.blue('Applying regex filter...');
+        try {
+          const regex = new RegExp(options.regex);
+          files = files.filter(file => regex.test(path.basename(file)));
+        } catch (error) {
+          spinner.fail(chalk.red(`Error: Invalid regex pattern: ${error.message}`));
+          process.exit(1);
+        }
+      }
+
+      if (options.ignoreregex) {
+        spinner.text = chalk.blue('Applying ignore patterns...');
+        try {
+          const ignoreRegex = new RegExp(options.ignoreregex);
+          files = files.filter(file => {
+            const relativePath = path.relative(directory, file);
+            return !ignoreRegex.test(relativePath) && !ignoreRegex.test(file);
+          });
+        } catch (error) {
+          spinner.fail(chalk.red(`Error: Invalid ignore regex pattern: ${error.message}`));
+          process.exit(1);
+        }
       }
     }
 
@@ -127,7 +307,8 @@ async function weaveFiles() {
       process.exit(1);
     }
 
-    spinner.succeed(chalk.green(`Found ${files.length} files to process`));
+    const modeText = options.followImports ? 'imports chain' : 'directory scan';
+    spinner.succeed(chalk.green(`Found ${files.length} files to process (${modeText})`));
 
     const tree = generateTree(files, directory);
 
@@ -163,22 +344,21 @@ async function weaveFiles() {
       }
     }
 
+    // Agregar árbol si está habilitada la opción
+    if (options.tree) {
+      output += '\n' + '='.repeat(50) + '\n';
+      output += 'Directory Tree:\n';
+      output += '='.repeat(50) + '\n\n';
+      output += tree;
+    }
 
-      // Agregar árbol si está habilitada la opción
-      if (options.tree) {
-        output += '\n' + '='.repeat(50) + '\n';
-        output += 'Directory Tree:\n';
-        output += '='.repeat(50) + '\n\n';
-        output += tree;
-      }
-  
-      // Agregar prompt si está especificado
-      if (options.prompt) {
-        output += '\n' + '='.repeat(50) + '\n';
-        output += 'Prompt:\n';
-        output += '='.repeat(50) + '\n\n';
-        output += options.prompt + '\n';
-      }
+    // Agregar prompt si está especificado
+    if (options.prompt) {
+      output += '\n' + '='.repeat(50) + '\n';
+      output += 'Prompt:\n';
+      output += '='.repeat(50) + '\n\n';
+      output += options.prompt + '\n';
+    }
 
     progressBar.stop();
 
@@ -187,8 +367,12 @@ async function weaveFiles() {
     const outputPath = path.resolve(options.output);
     await fs.writeFile(outputPath, output.trim());
     
+    const modeDescription = options.followImports ? 
+      `Following imports from ${path.basename(options.followImports)}` : 
+      'Directory scan';
+    
     spinner.succeed(chalk.green(
-      `Successfully processed ${processedFiles} file${processedFiles !== 1 ? 's' : ''} and saved to ${outputPath}`
+      `Successfully processed ${processedFiles} file${processedFiles !== 1 ? 's' : ''} and saved to ${outputPath} (${modeDescription})`
     ));
   } catch (error) {
     spinner.fail(chalk.red(`Error: ${error.message}`));
