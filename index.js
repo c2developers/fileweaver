@@ -213,7 +213,7 @@ async function followImports(entryFile, processedFiles = new Set(), spinner, max
 program
   .name('fileweaver')
   .description('A powerful CLI tool for weaving files together with advanced pattern matching capabilities')
-  .version('1.0.0')
+  .version('1.3.0')
   .option('-r, --regex <pattern>', 'regex pattern to match files')
   .option('-t, --tree <true|false>', 'add tree to output file')
   .option('-p, --prompt <prompt>', 'add prompt to output file')
