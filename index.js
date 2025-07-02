@@ -162,13 +162,13 @@ async function resolveImportPath(importPath, currentFilePath) {
   return null;
 }
 
-// Función para seguir imports recursivamente
-async function followImports(entryFile, processedFiles = new Set(), spinner) {
+// Función para seguir imports recursivamente con control de profundidad
+async function followImports(entryFile, processedFiles = new Set(), spinner, maxDepth = Infinity) {
   const files = [];
-  const queue = [entryFile];
+  const queue = [{ file: entryFile, depth: 0 }];
   
   while (queue.length > 0) {
-    const currentFile = queue.shift();
+    const { file: currentFile, depth } = queue.shift();
     const normalizedPath = path.resolve(currentFile);
     
     if (processedFiles.has(normalizedPath)) {
@@ -184,19 +184,22 @@ async function followImports(entryFile, processedFiles = new Set(), spinner) {
       }
       
       files.push(normalizedPath);
-      spinner.text = chalk.blue(`Processing: ${path.basename(normalizedPath)}`);
+      spinner.text = chalk.blue(`Processing (depth ${depth}): ${path.basename(normalizedPath)}`);
       
-      const content = await fs.readFile(normalizedPath, 'utf8');
-      const imports = parseImports(content, normalizedPath);
-      
-      for (const importPath of imports) {
-        if (!isLocalDependency(importPath)) {
-          continue;
-        }
+      // Solo seguir imports si no hemos alcanzado la profundidad máxima
+      if (depth < maxDepth) {
+        const content = await fs.readFile(normalizedPath, 'utf8');
+        const imports = parseImports(content, normalizedPath);
         
-        const resolvedPath = await resolveImportPath(importPath, normalizedPath);
-        if (resolvedPath && !processedFiles.has(path.resolve(resolvedPath))) {
-          queue.push(resolvedPath);
+        for (const importPath of imports) {
+          if (!isLocalDependency(importPath)) {
+            continue;
+          }
+          
+          const resolvedPath = await resolveImportPath(importPath, normalizedPath);
+          if (resolvedPath && !processedFiles.has(path.resolve(resolvedPath))) {
+            queue.push({ file: resolvedPath, depth: depth + 1 });
+          }
         }
       }
     } catch (error) {
@@ -210,7 +213,7 @@ async function followImports(entryFile, processedFiles = new Set(), spinner) {
 program
   .name('fileweaver')
   .description('A powerful CLI tool for weaving files together with advanced pattern matching capabilities')
-  .version('1.2.0')
+  .version('1.0.0')
   .option('-r, --regex <pattern>', 'regex pattern to match files')
   .option('-t, --tree <true|false>', 'add tree to output file')
   .option('-p, --prompt <prompt>', 'add prompt to output file')
@@ -219,6 +222,7 @@ program
   .option('-h, --headers', 'add file headers to content', false)
   .option('-o, --output <file>', 'output file name', 'output.txt')
   .option('-f, --follow-imports <file>', 'follow imports from entry file')
+  .option('--max-depth <number>', 'maximum depth for following imports (default: unlimited)', parseInt)
   .parse(process.argv);
 
 const options = program.opts();
@@ -253,7 +257,7 @@ async function weaveFiles() {
         process.exit(1);
       }
       
-      files = await followImports(entryFile, new Set(), spinner);
+      files = await followImports(entryFile, new Set(), spinner, options.maxDepth);
       directory = path.dirname(entryFile);
       
     } else {
@@ -368,7 +372,7 @@ async function weaveFiles() {
     await fs.writeFile(outputPath, output.trim());
     
     const modeDescription = options.followImports ? 
-      `Following imports from ${path.basename(options.followImports)}` : 
+      `Following imports from ${path.basename(options.followImports)}${options.maxDepth ? ` (max depth: ${options.maxDepth})` : ' (unlimited depth)'}` : 
       'Directory scan';
     
     spinner.succeed(chalk.green(
