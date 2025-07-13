@@ -8,17 +8,33 @@ import ora from 'ora';
 import cliProgress from 'cli-progress';
 import chalk from 'chalk';
 
+// Función para normalizar rutas para compatibilidad cross-platform
+function normalizePath(filePath) {
+  if (process.platform === 'win32') {
+    return filePath.replace(/\\/g, '/');
+  }
+  return filePath;
+}
+
+// Función para remover códigos de color ANSI
+function stripAnsiCodes(text) {
+  return text.replace(/\u001b\[[0-9;]*m/g, '');
+}
+
 function generateTree(files, baseDir) {
   // Ordenar los archivos para una mejor visualización
   files = files.sort();
   
-  // Convertir rutas absolutas a relativas
-  const relativeFiles = files.map(file => path.relative(baseDir, file));
+  // Convertir rutas absolutas a relativas y normalizar para cross-platform
+  const relativeFiles = files.map(file => {
+    const relativePath = path.relative(baseDir, file);
+    return normalizePath(relativePath);
+  });
   
   // Crear estructura de árbol
   const tree = {};
   for (const file of relativeFiles) {
-    const parts = file.split(path.sep);
+    const parts = file.split(process.platform === 'win32' ? '/' : path.sep);
     let current = tree;
     
     for (const part of parts) {
@@ -46,7 +62,7 @@ function generateTree(files, baseDir) {
       }
     }
     
-    return result;
+    return stripAnsiCodes(result);
   }
 
   return printTree(tree);
@@ -271,8 +287,8 @@ async function weaveFiles() {
         process.exit(1);
       }
 
-      // Buscar archivos
-      const searchPattern = path.join(directory, '**/*');
+      // Buscar archivos - normalizar patrón para Windows
+      const searchPattern = normalizePath(path.join(directory, '**/*'));
       files = await glob(searchPattern, { 
         nodir: true,
         ignore: ['**/node_modules/**'],
@@ -297,7 +313,9 @@ async function weaveFiles() {
           const ignoreRegex = new RegExp(options.ignoreregex);
           files = files.filter(file => {
             const relativePath = path.relative(directory, file);
-            return !ignoreRegex.test(relativePath) && !ignoreRegex.test(file);
+            const normalizedRelative = normalizePath(relativePath);
+            const normalizedFile = normalizePath(file);
+            return !ignoreRegex.test(normalizedRelative) && !ignoreRegex.test(normalizedFile);
           });
         } catch (error) {
           spinner.fail(chalk.red(`Error: Invalid ignore regex pattern: ${error.message}`));
@@ -332,7 +350,7 @@ async function weaveFiles() {
         const content = await fs.readFile(file, 'utf8');
         if (options.headers) {
           output += `\n${'='.repeat(50)}\n`;
-          output += `File: ${path.relative(directory, file)}\n`;
+          output += `File: ${normalizePath(path.relative(directory, file))}\n`;
           output += `${'='.repeat(50)}\n\n`;
         }
         output += content + '\n';
