@@ -4,9 +4,9 @@ File: CloserDetailPage.tsx
 
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { CloserDashboardData } from '@types';
+import { CloserDashboardData } from '@/types';
 import { useClosers } from '@/hooks/useClosers';
-import LoadingSpinner from '@components/ui/LoadingSpinner';
+import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import CloserHeader from '@/components/closers/closerDetailPage/CloserHeader';
 import CloserMetrics from '@/components/closers/closerDetailPage/CloserMetrics';
 import CloserModals from '@/components/closers/closerDetailPage/CloserModals';

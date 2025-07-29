@@ -57,7 +57,7 @@ function parseImports(content, filePath) {
   const imports = new Set();
   
   // Procesamos línea por línea primero
-  const lines = content.split('\n');
+  const lines = content.split('\n').slice(0, 10); // Limitar a las primeras 1000 líneas para evitar problemas de zrendimiento
   
   for (const line of lines) {
     const trimmedLine = line.trim();
@@ -69,22 +69,25 @@ function parseImports(content, filePath) {
     
     // Probamos cada patrón sin usar continue para permitir múltiples matches
     let match;
-    
+    console.log(`Processing line: ${trimmedLine}`);
     // 1. ES6 imports con from - MÁS ESPECÍFICO PRIMERO
     // import { something } from '...' o import something from '...'
     match = trimmedLine.match(/import\s+(?:(?:\{[^}]*\}|\*\s+as\s+\w+|\w+)(?:\s*,\s*(?:\{[^}]*\}|\*\s+as\s+\w+|\w+))*\s+)?from\s+['"`]([^'"`]+)['"`]/);
     if (match) {
+      console.log(`Found import: ${match[1]}`);
       imports.add(match[1]);
     }
     
     // 2. Import type (TypeScript)
     match = trimmedLine.match(/import\s+type\s+.*?\s+from\s+['"`]([^'"`]+)['"`]/);
     if (match) {
+      console.log(`Found type import2: ${match[1]}`);
       imports.add(match[1]);
     }
     
     // 3. Side effect imports - SOLO si no hay 'from'
     if (!trimmedLine.includes(' from ')) {
+      console.log(`Processing side effect import: ${trimmedLine}`);
       match = trimmedLine.match(/import\s+['"`]([^'"`]+)['"`]/);
       if (match) {
         imports.add(match[1]);
@@ -132,6 +135,7 @@ function parseImports(content, filePath) {
     imports.add(match[1]);
   }
   
+  console.log(`Total imports found: ${imports.size}`);
   return Array.from(imports);
 }
 // Función para verificar si un import es una dependencia local
@@ -152,10 +156,13 @@ function isLocalDependency(importPath) {
   }
   
   // Si empieza con @ y no tiene más /, es scoped package
-  if (importPath.startsWith('@') && importPath.split('/').length === 2) {
+  if (importPath.startsWith('@') && !importPath.startsWith('@/') && importPath.split('/').length === 2) {
     return false;
   }
-  
+  if(importPath.startsWith('@/') ){
+    // Si empieza con @/ es un alias local
+    return true;
+  }
   // En otros casos, asumimos que es local
   return true;
 }
@@ -163,6 +170,7 @@ function isLocalDependency(importPath) {
 // Función para resolver la ruta de un import
 async function resolveImportPath(importPath, currentFilePath) {
   const currentDir = path.dirname(currentFilePath);
+  console.log(`Resolving import: ${importPath} from ${currentFilePath}`);
   let resolvedPath;
   
   if (path.isAbsolute(importPath)) {
@@ -377,6 +385,7 @@ async function followImports(entryFile, processedFiles = new Set(), spinner, max
           }
           
           const resolvedPath = await resolveImportPath(importPath, normalizedPath);
+          console.log(`Resolved import: ${importPath} -> ${resolvedPath}`);
           if (resolvedPath && !processedFiles.has(path.resolve(resolvedPath))) {
             queue.push({ file: resolvedPath, depth: depth + 1 });
           }
