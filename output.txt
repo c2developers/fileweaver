@@ -1,4 +1,837 @@
 ==================================================
+File: ../../components/closers/closerDetailPage/CloserHeader.tsx
+==================================================
+
+import React from 'react';
+import {
+ArrowLeft,
+Edit,
+Trash2,
+UserCheck,
+UserX,
+Phone,
+Mail,
+RefreshCw,
+Award
+} from 'lucide-react';
+import { CloserDetailed } from '@types';
+import { formatPhoneNumber } from '@utils';
+import Button from '@components/ui/Button';
+interface CloserHeaderProps {
+closer: CloserDetailed;
+actionLoading: boolean;
+onNavigateBack: () => void;
+onRefresh: () => void;
+onEdit: () => void;
+onCall: () => void;
+onEmail: () => void;
+onActivate: () => void;
+onSuspend: () => void;
+onDelete: () => void;
+}
+const CloserHeader: React.FC<CloserHeaderProps> = ({
+closer,
+actionLoading,
+onNavigateBack,
+onRefresh,
+onEdit,
+onCall,
+onEmail,
+onActivate,
+onSuspend,
+onDelete
+}) => {
+const getStatusColor = (status: string) => {
+const colors: Record<string, string> = {
+'ACTIVE': 'bg-success-100 text-success-800',
+'INACTIVE': 'bg-secondary-100 text-secondary-800',
+'SUSPENDED': 'bg-warning-100 text-warning-800'
+};
+return colors[status] || 'bg-secondary-100 text-secondary-800';
+};
+const getStatusLabel = (status: string) => {
+const labels: Record<string, string> = {
+'ACTIVE': 'Activo',
+'INACTIVE': 'Inactivo',
+'SUSPENDED': 'Suspendido'
+};
+return labels[status] || status;
+};
+return (
+<div className="flex items-center justify-between">
+<div className="flex items-center space-x-4">
+<Button
+variant="ghost"
+size="sm"
+onClick={onNavigateBack}
+leftIcon={<ArrowLeft size={18} />}
+>
+Volver a Closers
+</Button>
+<div className="flex items-center space-x-4">
+{closer.avatar ? (
+<img
+src={closer.avatar}
+alt={`${closer.firstName} ${closer.lastName}`}
+className="w-16 h-16 rounded-full object-cover"
+/>
+) : (
+<div className="w-16 h-16 bg-primary-100 rounded-full flex items-center justify-center">
+<span className="text-xl font-semibold text-primary-600">
+{closer.firstName[0]}{closer.lastName[0]}
+</span>
+</div>
+)}
+<div>
+<h1 className="text-2xl font-bold text-secondary-900">
+{closer.firstName} {closer.lastName}
+</h1>
+<div className="flex items-center space-x-3 mt-1">
+<span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(closer.status)}`}>
+{getStatusLabel(closer.status)}
+</span>
+{closer.isVerified && (
+<span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-medium flex items-center">
+<Award size={12} className="mr-1" />
+Verificado
+</span>
+)}
+<div className="flex items-center text-sm text-secondary-600">
+<Mail size={14} className="mr-1" />
+{closer.email}
+</div>
+<div className="flex items-center text-sm text-secondary-600">
+<Phone size={14} className="mr-1" />
+{formatPhoneNumber(closer.phone)}
+</div>
+</div>
+</div>
+</div>
+</div>
+<div className="flex space-x-2">
+<Button
+variant="ghost"
+size="sm"
+onClick={onRefresh}
+leftIcon={<RefreshCw size={16} />}
+disabled={actionLoading}
+>
+Actualizar
+</Button>
+<Button
+variant="outline"
+size="sm"
+onClick={onEdit}
+leftIcon={<Edit size={16} />}
+disabled={actionLoading}
+>
+Editar
+</Button>
+<Button
+variant="outline"
+size="sm"
+onClick={onCall}
+leftIcon={<Phone size={16} />}
+disabled={actionLoading}
+>
+Llamar
+</Button>
+<Button
+variant="outline"
+size="sm"
+onClick={onEmail}
+leftIcon={<Mail size={16} />}
+disabled={actionLoading}
+>
+Email
+</Button>
+{closer.status === 'ACTIVE' ? (
+<Button
+variant="outline"
+size="sm"
+onClick={onSuspend}
+leftIcon={<UserX size={16} />}
+disabled={actionLoading}
+isLoading={actionLoading}
+>
+Suspender
+</Button>
+) : (
+<Button
+variant="outline"
+size="sm"
+onClick={onActivate}
+leftIcon={<UserCheck size={16} />}
+disabled={actionLoading}
+isLoading={actionLoading}
+>
+Activar
+</Button>
+)}
+<Button
+variant="danger"
+size="sm"
+onClick={onDelete}
+leftIcon={<Trash2 size={16} />}
+disabled={actionLoading}
+>
+Eliminar
+</Button>
+</div>
+</div>
+);
+};
+export default CloserHeader;
+
+==================================================
+File: ../../components/closers/closerDetailPage/CloserMetrics.tsx
+==================================================
+
+import React from 'react';
+import {
+DollarSign,
+Target,
+TrendingUp,
+Award,
+CreditCard,
+AlertTriangle
+} from 'lucide-react';
+import { CloserMetrics as MetricsType } from '@types';
+import { formatCurrency, formatNumber, formatPercentage } from '@utils';
+interface CloserMetricsProps {
+metrics: MetricsType;
+}
+interface MetricCardProps {
+title: string;
+value: string;
+subtitle: string;
+icon: React.ReactNode;
+iconBgColor: string;
+valueColor?: string;
+subtitleColor?: string;
+}
+const MetricCard: React.FC<MetricCardProps> = ({
+title,
+value,
+subtitle,
+icon,
+iconBgColor,
+valueColor = 'text-secondary-900',
+subtitleColor = 'text-secondary-600'
+}) => (
+<div className="bg-white rounded-lg shadow-sm border border-secondary-200 p-6">
+<div className="flex items-center justify-between">
+<div>
+<p className="text-sm text-secondary-600">{title}</p>
+<p className={`text-2xl font-bold ${valueColor}`}>{value}</p>
+<p className={`text-sm ${subtitleColor} mt-1`}>{subtitle}</p>
+</div>
+<div className={`p-3 ${iconBgColor} rounded-lg`}>
+{icon}
+</div>
+</div>
+</div>
+);
+const CloserMetrics: React.FC<CloserMetricsProps> = ({ metrics }) => {
+const metricsConfig = [
+{
+title: 'Ingresos Totales',
+value: formatCurrency(metrics.totalRevenue),
+subtitle: `+${formatPercentage(metrics.monthlyGrowth)}% este mes`,
+icon: <DollarSign size={24} className="text-success-600" />,
+iconBgColor: 'bg-success-50',
+valueColor: 'text-success-600',
+subtitleColor: 'text-success-600'
+},
+{
+title: 'Ventas Totales',
+value: formatNumber(metrics.totalSales),
+subtitle: `Ticket: ${formatCurrency(metrics.averageTicket)}`,
+icon: <Target size={24} className="text-primary-600" />,
+iconBgColor: 'bg-primary-50',
+valueColor: 'text-primary-600'
+},
+{
+title: 'Conversión',
+value: formatPercentage(metrics.conversionRate),
+subtitle: `${metrics.clientsConverted} de ${metrics.clientsAssigned}`,
+icon: <TrendingUp size={24} className="text-warning-600" />,
+iconBgColor: 'bg-warning-50',
+valueColor: 'text-warning-600'
+},
+{
+title: 'Comisiones',
+value: formatCurrency(metrics.pendingCommission),
+subtitle: `Pagadas: ${formatCurrency(metrics.paidCommission)}`,
+icon: <Award size={24} className="text-error-600" />,
+iconBgColor: 'bg-error-50',
+valueColor: 'text-error-600',
+subtitleColor: 'text-success-600'
+},
+{
+title: 'Financiamientos',
+value: formatNumber(metrics.clientsWithFinancing),
+subtitle: formatCurrency(metrics.financedAmount),
+icon: <CreditCard size={24} className="text-purple-600" />,
+iconBgColor: 'bg-purple-50',
+valueColor: 'text-purple-600',
+subtitleColor: 'text-purple-600'
+},
+{
+title: 'Pagos Atrasados',
+value: formatNumber(metrics.clientsWithOverduePayments),
+subtitle: formatCurrency(metrics.totalOverdueAmount),
+icon: <AlertTriangle size={24} className="text-red-600" />,
+iconBgColor: 'bg-red-50',
+valueColor: 'text-red-600',
+subtitleColor: 'text-red-600'
+}
+];
+return (
+<>
+{}
+<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 gap-6">
+{metricsConfig.map((metric, index) => (
+<MetricCard key={index} {...metric} />
+))}
+</div>
+{}
+<div className="bg-white rounded-lg shadow-sm border border-secondary-200 p-6">
+<div className="flex items-center justify-between mb-4">
+<h3 className="text-lg font-semibold text-secondary-900">Tasa de Cobro</h3>
+<span className="text-2xl font-bold text-secondary-900">
+{formatPercentage(metrics.collectionRate)}
+</span>
+</div>
+<div className="w-full bg-secondary-200 rounded-full h-3">
+<div
+className="bg-success-600 h-3 rounded-full transition-all duration-300"
+style={{ width: `${metrics.collectionRate}%` }}
+></div>
+</div>
+<div className="flex justify-between text-sm text-secondary-600 mt-2">
+<span>Pagos puntuales</span>
+<span>Pagos totales</span>
+</div>
+</div>
+</>
+);
+};
+export default CloserMetrics;
+
+==================================================
+File: ../../components/closers/closerDetailPage/CloserModals.tsx
+==================================================
+
+import React from 'react';
+import { CheckCircle, Clock, AlertCircle, XCircle } from 'lucide-react';
+import { CloserDetailed, CloserClientDetailed } from '@types';
+import { formatCurrency, formatDate, formatRelativeTime } from '@utils';
+import Button from '@components/ui/Button';
+import Modal from '@components/ui/Modal';
+interface CloserModalsProps {
+showDeleteModal: boolean;
+onCloseDeleteModal: () => void;
+onConfirmDelete: () => void;
+actionLoading: boolean;
+closer: CloserDetailed;
+selectedClientDetail: CloserClientDetailed | null;
+onCloseClientDetail: () => void;
+}
+const CloserModals: React.FC<CloserModalsProps> = ({
+showDeleteModal,
+onCloseDeleteModal,
+onConfirmDelete,
+actionLoading,
+closer,
+selectedClientDetail,
+onCloseClientDetail
+}) => {
+const getPaymentStatusIcon = (status: string) => {
+const icons: Record<string, React.ReactNode> = {
+'paid': <CheckCircle size={16} className="text-success-600" />,
+'pending': <Clock size={16} className="text-warning-600" />,
+'overdue': <AlertCircle size={16} className="text-error-600" />,
+'cancelled': <XCircle size={16} className="text-secondary-600" />,
+'refunded': <XCircle size={16} className="text-error-600" />
+};
+return icons[status] || <Clock size={16} className="text-secondary-600" />;
+};
+const getClientStatusColor = (status: string) => {
+const colors: Record<string, string> = {
+'lead': 'text-secondary-600',
+'qualified': 'text-primary-600',
+'negotiating': 'text-warning-600',
+'won': 'text-success-600',
+'lost': 'text-error-600',
+'nurturing': 'text-purple-600'
+};
+return colors[status] || 'text-secondary-600';
+};
+return (
+<>
+{}
+{selectedClientDetail && (
+<Modal
+isOpen={!!selectedClientDetail}
+onClose={onCloseClientDetail}
+title={`Detalles de ${selectedClientDetail.name}`}
+size="lg"
+>
+<div className="space-y-6">
+{}
+<div className="flex items-start space-x-4">
+<div className="h-16 w-16 rounded-full bg-primary-100 flex items-center justify-center">
+<span className="text-xl font-semibold text-primary-600">
+{selectedClientDetail.name.split(' ').map(n => n[0]).join('')}
+</span>
+</div>
+<div className="flex-1">
+<h3 className="text-lg font-semibold text-secondary-900">{selectedClientDetail.name}</h3>
+<div className="flex items-center space-x-4 text-sm text-secondary-600 mt-1">
+<span>{selectedClientDetail.email}</span>
+<span>{selectedClientDetail.phone}</span>
+<span className={`px-2 py-1 rounded-full text-xs font-medium ${getClientStatusColor(selectedClientDetail.status)}`}>
+{selectedClientDetail.status}
+</span>
+</div>
+</div>
+</div>
+{}
+{selectedClientDetail.totalSpent > 0 && (
+<div className="grid grid-cols-3 gap-4">
+<div className="bg-success-50 border border-success-200 rounded-lg p-4 text-center">
+<div className="text-xl font-bold text-success-600">{formatCurrency(selectedClientDetail.totalSpent)}</div>
+<div className="text-sm text-success-700">Total Gastado</div>
+</div>
+<div className="bg-warning-50 border border-warning-200 rounded-lg p-4 text-center">
+<div className="text-xl font-bold text-warning-600">{formatCurrency(selectedClientDetail.totalPending)}</div>
+<div className="text-sm text-warning-700">Pendiente</div>
+</div>
+<div className="bg-error-50 border border-error-200 rounded-lg p-4 text-center">
+<div className="text-xl font-bold text-error-600">{formatCurrency(selectedClientDetail.totalOverdue)}</div>
+<div className="text-sm text-error-700">Atrasado</div>
+</div>
+</div>
+)}
+{}
+{selectedClientDetail.paymentPlan && (
+<div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+<h4 className="font-medium text-secondary-900 mb-3">Plan de Financiamiento</h4>
+<div className="grid grid-cols-2 gap-4 text-sm">
+<div>
+<span className="text-secondary-600">Total:</span>
+<span className="ml-2 font-medium">{formatCurrency(selectedClientDetail.paymentPlan.totalAmount)}</span>
+</div>
+<div>
+<span className="text-secondary-600">Cuotas:</span>
+<span className="ml-2 font-medium">{selectedClientDetail.paymentPlan.installments}</span>
+</div>
+<div>
+<span className="text-secondary-600">Monto mensual:</span>
+<span className="ml-2 font-medium">{formatCurrency(selectedClientDetail.paymentPlan.monthlyAmount)}</span>
+</div>
+<div>
+<span className="text-secondary-600">Pagos restantes:</span>
+<span className="ml-2 font-medium">{selectedClientDetail.paymentPlan.remainingPayments}</span>
+</div>
+<div className="col-span-2">
+<span className="text-secondary-600">Próximo pago:</span>
+<span className="ml-2 font-medium">{formatDate(selectedClientDetail.paymentPlan.nextPaymentDate)}</span>
+</div>
+</div>
+</div>
+)}
+{}
+{selectedClientDetail.payments.length > 0 && (
+<div>
+<h4 className="font-medium text-secondary-900 mb-3">Historial de Pagos</h4>
+<div className="max-h-60 overflow-y-auto">
+<table className="min-w-full divide-y divide-secondary-200">
+<thead className="bg-secondary-50">
+<tr>
+<th className="px-4 py-2 text-left text-xs font-medium text-secondary-500 uppercase">Cuota</th>
+<th className="px-4 py-2 text-left text-xs font-medium text-secondary-500 uppercase">Monto</th>
+<th className="px-4 py-2 text-left text-xs font-medium text-secondary-500 uppercase">Vencimiento</th>
+<th className="px-4 py-2 text-left text-xs font-medium text-secondary-500 uppercase">Estado</th>
+</tr>
+</thead>
+<tbody className="bg-white divide-y divide-secondary-200">
+{selectedClientDetail.payments.map((payment) => (
+<tr key={payment.id}>
+<td className="px-4 py-2 text-sm">{payment.installmentNumber}/{payment.totalInstallments}</td>
+<td className="px-4 py-2 text-sm font-medium">{formatCurrency(payment.amount)}</td>
+<td className="px-4 py-2 text-sm">{formatDate(payment.dueDate)}</td>
+<td className="px-4 py-2">
+<div className="flex items-center">
+{getPaymentStatusIcon(payment.status)}
+<span className="ml-2 text-sm">
+{payment.status === 'paid' ? 'Pagado' :
+payment.status === 'pending' ? 'Pendiente' :
+payment.status === 'overdue' ? 'Atrasado' : 'Cancelado'}
+</span>
+</div>
+</td>
+</tr>
+))}
+</tbody>
+</table>
+</div>
+</div>
+)}
+{}
+<div>
+<h4 className="font-medium text-secondary-900 mb-3">Historial de Interacciones</h4>
+<div className="max-h-60 overflow-y-auto space-y-3">
+{selectedClientDetail.interactionHistory.slice(0, 10).map((interaction) => (
+<div key={interaction.id} className="flex items-start space-x-3 p-3 bg-secondary-50 rounded-lg">
+<div className="flex-shrink-0 w-2 h-2 bg-primary-600 rounded-full mt-2"></div>
+<div className="flex-1 min-w-0">
+<div className="flex items-center space-x-2">
+<span className="text-sm font-medium text-secondary-900">{interaction.title}</span>
+<span className={`text-xs px-2 py-1 rounded-full ${
+interaction.outcome === 'positive' ? 'bg-success-100 text-success-700' :
+interaction.outcome === 'negative' ? 'bg-error-100 text-error-700' :
+'bg-secondary-100 text-secondary-700'
+}`}>
+{interaction.outcome === 'positive' ? 'Positivo' :
+interaction.outcome === 'negative' ? 'Negativo' : 'Neutral'}
+</span>
+</div>
+{interaction.description && (
+<p className="text-sm text-secondary-600">{interaction.description}</p>
+)}
+<div className="flex items-center space-x-4 text-xs text-secondary-500 mt-1">
+<span>{formatRelativeTime(interaction.date)}</span>
+{interaction.duration && (
+<span>{interaction.duration} min</span>
+)}
+</div>
+</div>
+</div>
+))}
+</div>
+</div>
+</div>
+</Modal>
+)}
+{}
+<Modal
+isOpen={showDeleteModal}
+onClose={onCloseDeleteModal}
+title="Confirmar eliminación"
+footer={
+<div className="flex space-x-3">
+<Button
+variant="outline"
+onClick={onCloseDeleteModal}
+disabled={actionLoading}
+>
+Cancelar
+</Button>
+<Button
+variant="danger"
+onClick={onConfirmDelete}
+isLoading={actionLoading}
+disabled={actionLoading}
+>
+Eliminar
+</Button>
+</div>
+}
+>
+<p className="text-secondary-600">
+¿Estás seguro de que quieres eliminar al closer <strong>"{closer.firstName} {closer.lastName}"</strong>?
+Esta acción no se puede deshacer.
+</p>
+{closer.totalSales > 0 && (
+<div className="mt-3 p-3 bg-warning-50 border border-warning-200 rounded-lg">
+<p className="text-sm text-warning-800">
+<strong>Advertencia:</strong> Este closer tiene {closer.totalSales} ventas realizadas.
+</p>
+</div>
+)}
+</Modal>
+</>
+);
+};
+export default CloserModals;
+
+==================================================
+File: ../../hooks/useClosers.ts
+==================================================
+
+import { useState, useEffect, useCallback } from 'react';
+import {
+Closer,
+CloserFormData,
+CloserFilters,
+CloserStats,
+CloserDashboardData,
+PaginatedResponse,
+PaginationParams,
+LoadingState
+} from '@types';
+import { closersMockService } from '@services/closers/closers.mock.service';
+interface UseClosersReturn extends LoadingState {
+closers: Closer[];
+pagination: PaginatedResponse<Closer>['pagination'] | null;
+stats: CloserStats | null;
+specialties: string[];
+languages: string[];
+fetchClosers: (pagination: PaginationParams, filters?: CloserFilters) => Promise<void>;
+fetchCloserById: (id: string) => Promise<Closer | null>;
+createCloser: (data: CloserFormData) => Promise<Closer | null>;
+updateCloser: (id: string, data: Partial<CloserFormData>) => Promise<Closer | null>;
+deleteCloser: (id: string) => Promise<boolean>;
+activateCloser: (id: string) => Promise<Closer | null>;
+suspendCloser: (id: string) => Promise<Closer | null>;
+fetchStats: () => Promise<void>;
+fetchSpecialties: () => Promise<void>;
+fetchLanguages: () => Promise<void>;
+fetchCloserDashboard: (closerId: string) => Promise<CloserDashboardData | null>;
+refreshClosers: () => Promise<void>;
+clearError: () => void;
+}
+export const useClosers = (): UseClosersReturn => {
+const [closers, setClosers] = useState<Closer[]>([]);
+const [pagination, setPagination] = useState<PaginatedResponse<Closer>['pagination'] | null>(null);
+const [stats, setStats] = useState<CloserStats | null>(null);
+const [specialties, setSpecialties] = useState<string[]>([]);
+const [languages, setLanguages] = useState<string[]>([]);
+const [isLoading, setIsLoading] = useState(false);
+const [error, setError] = useState<any>(null);
+const [currentPagination, setCurrentPagination] = useState<PaginationParams>({
+page: 1,
+limit: 12,
+sortBy: 'updatedAt',
+sortOrder: 'desc'
+});
+const [currentFilters, setCurrentFilters] = useState<CloserFilters | undefined>();
+const clearError = useCallback(() => {
+setError(null);
+}, []);
+const fetchClosers = useCallback(async (
+paginationParams: PaginationParams,
+filters?: CloserFilters
+) => {
+setIsLoading(true);
+setError(null);
+try {
+const response = await closersMockService.getClosers(paginationParams, filters);
+setClosers(response.data);
+setPagination(response.pagination);
+setCurrentPagination(paginationParams);
+setCurrentFilters(filters);
+} catch (err) {
+setError(err);
+console.error('Error fetching closers:', err);
+} finally {
+setIsLoading(false);
+}
+}, []);
+const fetchCloserById = useCallback(async (id: string): Promise<Closer | null> => {
+setIsLoading(true);
+setError(null);
+try {
+const closer = await closersMockService.getCloserById(id);
+return closer;
+} catch (err) {
+setError(err);
+console.error('Error fetching closer:', err);
+return null;
+} finally {
+setIsLoading(false);
+}
+}, []);
+const fetchCloserDashboard = useCallback(async (closerId: string): Promise<CloserDashboardData | null> => {
+setIsLoading(true);
+setError(null);
+try {
+const dashboardData = await closersMockService.getCloserDashboard(closerId);
+return dashboardData;
+} catch (err) {
+setError(err);
+console.error('Error fetching closer dashboard:', err);
+return null;
+} finally {
+setIsLoading(false);
+}
+}, []);
+const createCloser = useCallback(async (data: CloserFormData): Promise<Closer | null> => {
+setIsLoading(true);
+setError(null);
+try {
+const newCloser = await closersMockService.createCloser(data);
+setClosers(prev => [newCloser, ...prev]);
+if (stats) {
+setStats(prev => prev ? {
+...prev,
+totalClosers: prev.totalClosers + 1,
+activeClosers: prev.activeClosers + 1
+} : null);
+}
+return newCloser;
+} catch (err) {
+setError(err);
+console.error('Error creating closer:', err);
+return null;
+} finally {
+setIsLoading(false);
+}
+}, [stats]);
+const updateCloser = useCallback(async (
+id: string,
+data: Partial<CloserFormData>
+): Promise<Closer | null> => {
+setIsLoading(true);
+setError(null);
+try {
+const updatedCloser = await closersMockService.updateCloser(id, data);
+setClosers(prev =>
+prev.map(closer => closer.id === id ? updatedCloser : closer)
+);
+return updatedCloser;
+} catch (err) {
+setError(err);
+console.error('Error updating closer:', err);
+return null;
+} finally {
+setIsLoading(false);
+}
+}, []);
+const deleteCloser = useCallback(async (id: string): Promise<boolean> => {
+setIsLoading(true);
+setError(null);
+try {
+await closersMockService.deleteCloser(id);
+setClosers(prev => prev.filter(closer => closer.id !== id));
+if (stats) {
+setStats(prev => prev ? {
+...prev,
+totalClosers: prev.totalClosers - 1
+} : null);
+}
+return true;
+} catch (err) {
+setError(err);
+console.error('Error deleting closer:', err);
+return false;
+} finally {
+setIsLoading(false);
+}
+}, [stats]);
+const activateCloser = useCallback(async (id: string): Promise<Closer | null> => {
+setIsLoading(true);
+setError(null);
+try {
+const activatedCloser = await closersMockService.activateCloser(id);
+setClosers(prev =>
+prev.map(closer => closer.id === id ? activatedCloser : closer)
+);
+if (stats) {
+const currentCloser = closers.find(c => c.id === id);
+if (currentCloser?.status !== 'ACTIVE') {
+setStats(prev => prev ? {
+...prev,
+activeClosers: prev.activeClosers + 1,
+inactiveClosers: Math.max(0, prev.inactiveClosers - 1)
+} : null);
+}
+}
+return activatedCloser;
+} catch (err) {
+setError(err);
+console.error('Error activating closer:', err);
+return null;
+} finally {
+setIsLoading(false);
+}
+}, [stats, closers]);
+const suspendCloser = useCallback(async (id: string): Promise<Closer | null> => {
+setIsLoading(true);
+setError(null);
+try {
+const suspendedCloser = await closersMockService.suspendCloser(id);
+setClosers(prev =>
+prev.map(closer => closer.id === id ? suspendedCloser : closer)
+);
+if (stats) {
+const currentCloser = closers.find(c => c.id === id);
+if (currentCloser?.status === 'ACTIVE') {
+setStats(prev => prev ? {
+...prev,
+activeClosers: Math.max(0, prev.activeClosers - 1),
+suspendedClosers: prev.suspendedClosers + 1
+} : null);
+}
+}
+return suspendedCloser;
+} catch (err) {
+setError(err);
+console.error('Error suspending closer:', err);
+return null;
+} finally {
+setIsLoading(false);
+}
+}, [stats, closers]);
+const fetchStats = useCallback(async () => {
+try {
+const statsData = await closersMockService.getClosersStats();
+setStats(statsData);
+} catch (err) {
+console.error('Error fetching closers stats:', err);
+}
+}, []);
+const fetchSpecialties = useCallback(async () => {
+try {
+const specialtiesData = await closersMockService.getSpecialties();
+setSpecialties(specialtiesData);
+} catch (err) {
+console.error('Error fetching specialties:', err);
+}
+}, []);
+const fetchLanguages = useCallback(async () => {
+try {
+const languagesData = await closersMockService.getLanguages();
+setLanguages(languagesData);
+} catch (err) {
+console.error('Error fetching languages:', err);
+}
+}, []);
+const refreshClosers = useCallback(async () => {
+await fetchClosers(currentPagination, currentFilters);
+}, [fetchClosers, currentPagination, currentFilters]);
+useEffect(() => {
+fetchSpecialties();
+fetchLanguages();
+fetchStats();
+}, [fetchSpecialties, fetchLanguages, fetchStats]);
+return {
+closers,
+pagination,
+stats,
+specialties,
+languages,
+isLoading,
+error,
+fetchClosers,
+fetchCloserById,
+createCloser,
+updateCloser,
+deleteCloser,
+activateCloser,
+suspendCloser,
+fetchStats,
+fetchSpecialties,
+fetchLanguages,
+fetchCloserDashboard,
+refreshClosers,
+clearError
+};
+};
+
+==================================================
 File: CloserDetailPage.tsx
 ==================================================
 
