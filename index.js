@@ -52,11 +52,11 @@ function generateTree(files, baseDir) {
   return printTree(tree);
 }
 
-// Función simplificada para parsear imports de un archivo
+// Función corregida para parsear imports de un archivo
 function parseImports(content, filePath) {
   const imports = new Set();
   
-  // Estrategia más simple: procesar línea por línea para evitar problemas con regex complejas
+  // Procesamos línea por línea primero
   const lines = content.split('\n');
   
   for (const line of lines) {
@@ -67,68 +67,73 @@ function parseImports(content, filePath) {
       continue;
     }
     
-    // ES6 imports - versión simplificada pero robusta
+    // Probamos cada patrón sin usar continue para permitir múltiples matches
     let match;
     
-    // import ... from '...'
-    match = trimmedLine.match(/import\s+.*?\s+from\s+['"`]([^'"`]+)['"`]/);
+    // 1. ES6 imports con from - MÁS ESPECÍFICO PRIMERO
+    // import { something } from '...' o import something from '...'
+    match = trimmedLine.match(/import\s+(?:(?:\{[^}]*\}|\*\s+as\s+\w+|\w+)(?:\s*,\s*(?:\{[^}]*\}|\*\s+as\s+\w+|\w+))*\s+)?from\s+['"`]([^'"`]+)['"`]/);
     if (match) {
       imports.add(match[1]);
-      continue;
     }
     
-    // import '...' (side effects)
-    match = trimmedLine.match(/import\s+['"`]([^'"`]+)['"`]/);
-    if (match) {
-      imports.add(match[1]);
-      continue;
-    }
-    
-    // import type ... from '...' (TypeScript)
+    // 2. Import type (TypeScript)
     match = trimmedLine.match(/import\s+type\s+.*?\s+from\s+['"`]([^'"`]+)['"`]/);
     if (match) {
       imports.add(match[1]);
-      continue;
     }
     
-    // const/let/var ... = require('...')
-    match = trimmedLine.match(/(?:const|let|var)\s+.*?=\s*require\s*\(\s*['"`]([^'"`]+)['"`]\s*\)/);
+    // 3. Side effect imports - SOLO si no hay 'from'
+    if (!trimmedLine.includes(' from ')) {
+      match = trimmedLine.match(/import\s+['"`]([^'"`]+)['"`]/);
+      if (match) {
+        imports.add(match[1]);
+      }
+    }
+    
+    // 4. CommonJS require con asignación
+    match = trimmedLine.match(/(?:const|let|var)\s+(?:\{[^}]*\}|\w+|\[[^\]]*\])\s*=\s*require\s*\(\s*['"`]([^'"`]+)['"`]\s*\)/);
     if (match) {
       imports.add(match[1]);
-      continue;
     }
     
-    // require('...') directo
-    match = trimmedLine.match(/require\s*\(\s*['"`]([^'"`]+)['"`]\s*\)/);
+    // 5. require() directo (sin asignación)
+    match = trimmedLine.match(/(?:^|[^=\w])require\s*\(\s*['"`]([^'"`]+)['"`]\s*\)/);
     if (match) {
       imports.add(match[1]);
-      continue;
     }
     
-    // import('...') dinámico
+    // 6. Dynamic imports
     match = trimmedLine.match(/import\s*\(\s*['"`]([^'"`]+)['"`]\s*\)/);
     if (match) {
       imports.add(match[1]);
-      continue;
     }
   }
   
-  // Manejo especial para imports multilínea
+  // Procesamiento adicional para imports multilínea
+  // Esto maneja casos donde el import se extiende por múltiples líneas
+  
+  // ES6 imports multilínea
   const multilineImportRegex = /import\s*\{[^}]*\}\s*from\s*['"`]([^'"`]+)['"`]/gs;
   let match;
   while ((match = multilineImportRegex.exec(content)) !== null) {
     imports.add(match[1]);
   }
   
-  // Manejo para destructuring multilínea de require
+  // Destructuring multilínea de require
   const multilineRequireRegex = /(?:const|let|var)\s*\{[^}]*\}\s*=\s*require\s*\(\s*['"`]([^'"`]+)['"`]\s*\)/gs;
   while ((match = multilineRequireRegex.exec(content)) !== null) {
     imports.add(match[1]);
   }
   
+  // Import default multilínea
+  const multilineDefaultImportRegex = /import\s+\w+\s*,\s*\{[^}]*\}\s*from\s*['"`]([^'"`]+)['"`]/gs;
+  while ((match = multilineDefaultImportRegex.exec(content)) !== null) {
+    imports.add(match[1]);
+  }
+  
   return Array.from(imports);
 }
-
 // Función para verificar si un import es una dependencia local
 function isLocalDependency(importPath) {
   // Si empieza con ./ o ../ es local
