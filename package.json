@@ -1,6 +1,6 @@
 {
   "name": "fileweaver",
-  "version": "1.8.1-0",
+  "version": "1.8.2-0",
   "description": "A CLI tool to weave files together based on regex patterns",
   "main": "index.js",
   "type": "module",
