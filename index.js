@@ -162,6 +162,144 @@ async function resolveImportPath(importPath, currentFilePath) {
   return null;
 }
 
+// Función para minificar contenido basado en el tipo de archivo
+function minifyContent(content, filePath, minifyLevel = 'medium') {
+  const extension = path.extname(filePath).toLowerCase();
+  
+  // Función base para eliminar comentarios y espacios
+  function basicMinify(text) {
+    return text
+      .split('\n')
+      .map(line => line.trim())
+      .filter(line => line.length > 0)
+      .join('\n');
+  }
+  
+  // Función para eliminar comentarios de JavaScript/TypeScript
+  function removeJSComments(text) {
+    // Eliminar comentarios de línea (//)
+    text = text.replace(/\/\/.*$/gm, '');
+    
+    // Eliminar comentarios de bloque (/* */) - versión simple
+    text = text.replace(/\/\*[\s\S]*?\*\//g, '');
+    
+    return text;
+  }
+  
+  // Función para eliminar comentarios de CSS
+  function removeCSSComments(text) {
+    return text.replace(/\/\*[\s\S]*?\*\//g, '');
+  }
+  
+  // Función para eliminar comentarios de HTML
+  function removeHTMLComments(text) {
+    return text.replace(/<!--[\s\S]*?-->/g, '');
+  }
+  
+  // Función para minificación agresiva
+  function aggressiveMinify(text) {
+    return text
+      .replace(/\s+/g, ' ')
+      .replace(/\s*([{}();,])\s*/g, '$1')
+      .replace(/;\s*}/g, '}')
+      .trim();
+  }
+  
+  try {
+    let minified = content;
+    
+    // Aplicar minificación según el tipo de archivo
+    switch (extension) {
+      case '.js':
+      case '.jsx':
+      case '.ts':
+      case '.tsx':
+      case '.mjs':
+      case '.cjs':
+        minified = removeJSComments(minified);
+        break;
+        
+      case '.css':
+      case '.scss':
+      case '.sass':
+      case '.less':
+        minified = removeCSSComments(minified);
+        break;
+        
+      case '.html':
+      case '.htm':
+        minified = removeHTMLComments(minified);
+        break;
+        
+      case '.json':
+        try {
+          // Para JSON, parsear y stringify sin espacios
+          const parsed = JSON.parse(minified);
+          minified = JSON.stringify(parsed);
+        } catch (e) {
+          // Si no es JSON válido, aplicar minificación básica
+          minified = basicMinify(minified);
+        }
+        break;
+        
+      case '.xml':
+      case '.svg':
+        minified = removeHTMLComments(minified);
+        break;
+        
+      default:
+        // Para otros tipos de archivo, solo minificación básica
+        break;
+    }
+    
+    // Aplicar nivel de minificación
+    switch (minifyLevel) {
+      case 'light':
+        minified = minified
+          .split('\n')
+          .filter(line => line.trim().length > 0)
+          .join('\n');
+        break;
+        
+      case 'medium':
+        minified = basicMinify(minified);
+        break;
+        
+      case 'aggressive':
+        if (['.js', '.jsx', '.ts', '.tsx', '.css', '.html'].includes(extension)) {
+          minified = aggressiveMinify(basicMinify(minified));
+        } else {
+          minified = basicMinify(minified);
+        }
+        break;
+        
+      default:
+        minified = basicMinify(minified);
+    }
+    
+    return minified;
+    
+  } catch (error) {
+    console.warn(chalk.yellow(`Warning: Could not minify ${filePath}: ${error.message}`));
+    return basicMinify(content);
+  }
+}
+
+// Función para calcular estadísticas de compresión
+function calculateCompressionStats(original, minified) {
+  const originalSize = original.length;
+  const minifiedSize = minified.length;
+  const reduction = originalSize - minifiedSize;
+  const percentage = originalSize > 0 ? ((reduction / originalSize) * 100).toFixed(1) : 0;
+  
+  return {
+    originalSize,
+    minifiedSize,
+    reduction,
+    percentage
+  };
+}
+
 // Función para seguir imports recursivamente con control de profundidad
 async function followImports(entryFile, processedFiles = new Set(), spinner, maxDepth = Infinity) {
   const files = [];
@@ -213,7 +351,7 @@ async function followImports(entryFile, processedFiles = new Set(), spinner, max
 program
   .name('fileweaver')
   .description('A powerful CLI tool for weaving files together with advanced pattern matching capabilities')
-  .version('1.3.0')
+  .version('1.4.0')
   .option('-r, --regex <pattern>', 'regex pattern to match files')
   .option('-t, --tree <true|false>', 'add tree to output file')
   .option('-p, --prompt <prompt>', 'add prompt to output file')
@@ -223,6 +361,8 @@ program
   .option('-o, --output <file>', 'output file name', 'output.txt')
   .option('-f, --follow-imports <file>', 'follow imports from entry file')
   .option('--max-depth <number>', 'maximum depth for following imports (default: unlimited)', parseInt)
+  .option('-m, --minify [level]', 'minify content before concatenation (light|medium|aggressive)', 'medium')
+  .option('--stats', 'show compression statistics', false)
   .parse(process.argv);
 
 const options = program.opts();
@@ -312,7 +452,8 @@ async function weaveFiles() {
     }
 
     const modeText = options.followImports ? 'imports chain' : 'directory scan';
-    spinner.succeed(chalk.green(`Found ${files.length} files to process (${modeText})`));
+    const minifyText = options.minify ? ` (minify: ${options.minify})` : '';
+    spinner.succeed(chalk.green(`Found ${files.length} files to process (${modeText}${minifyText})`));
 
     const tree = generateTree(files, directory);
 
@@ -326,16 +467,30 @@ async function weaveFiles() {
     // Leer y concatenar archivos
     let output = '';
     let processedFiles = 0;
+    let totalOriginalSize = 0;
+    let totalMinifiedSize = 0;
 
     for (const file of files) {
       try {
         const content = await fs.readFile(file, 'utf8');
+        let processedContent = content;
+        
+        // Minificar si está habilitado
+        if (options.minify) {
+          processedContent = minifyContent(content, file, options.minify);
+          
+          if (options.stats) {
+            totalOriginalSize += content.length;
+            totalMinifiedSize += processedContent.length;
+          }
+        }
+        
         if (options.headers) {
           output += `\n${'='.repeat(50)}\n`;
           output += `File: ${path.relative(directory, file)}\n`;
           output += `${'='.repeat(50)}\n\n`;
         }
-        output += content + '\n';
+        output += processedContent + '\n';
 
         processedFiles++;
         
@@ -374,6 +529,19 @@ async function weaveFiles() {
     const modeDescription = options.followImports ? 
       `Following imports from ${path.basename(options.followImports)}${options.maxDepth ? ` (max depth: ${options.maxDepth})` : ' (unlimited depth)'}` : 
       'Directory scan';
+    
+    // Mostrar estadísticas de compresión si están habilitadas
+    if (options.stats && options.minify && totalOriginalSize > 0) {
+      const stats = calculateCompressionStats(
+        { length: totalOriginalSize }, 
+        { length: totalMinifiedSize }
+      );
+      
+      console.log(chalk.cyan('\nCompression Statistics:'));
+      console.log(chalk.white(`Original size: ${stats.originalSize.toLocaleString()} characters`));
+      console.log(chalk.white(`Minified size: ${stats.minifiedSize.toLocaleString()} characters`));
+      console.log(chalk.green(`Reduction: ${stats.reduction.toLocaleString()} characters (${stats.percentage}%)`));
+    }
     
     spinner.succeed(chalk.green(
       `Successfully processed ${processedFiles} file${processedFiles !== 1 ? 's' : ''} and saved to ${outputPath} (${modeDescription})`
