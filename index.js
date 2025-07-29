@@ -52,227 +52,42 @@ function generateTree(files, baseDir) {
   return printTree(tree);
 }
 
-// Función para eliminar comentarios preservando strings
-function removeCommentsPreservingStrings(content) {
-  let result = '';
-  let i = 0;
-  const len = content.length;
-  
-  while (i < len) {
-    const char = content[i];
-    const nextChar = content[i + 1];
-    
-    // Manejar strings con comillas simples
-    if (char === "'") {
-      result += char;
-      i++;
-      while (i < len && content[i] !== "'") {
-        if (content[i] === '\\') {
-          result += content[i] + (content[i + 1] || '');
-          i += 2;
-        } else {
-          result += content[i];
-          i++;
-        }
-      }
-      if (i < len) result += content[i]; // Comilla de cierre
-      i++;
-      continue;
-    }
-    
-    // Manejar strings con comillas dobles
-    if (char === '"') {
-      result += char;
-      i++;
-      while (i < len && content[i] !== '"') {
-        if (content[i] === '\\') {
-          result += content[i] + (content[i + 1] || '');
-          i += 2;
-        } else {
-          result += content[i];
-          i++;
-        }
-      }
-      if (i < len) result += content[i]; // Comilla de cierre
-      i++;
-      continue;
-    }
-    
-    // Manejar template literals
-    if (char === '`') {
-      result += char;
-      i++;
-      while (i < len && content[i] !== '`') {
-        if (content[i] === '\\') {
-          result += content[i] + (content[i + 1] || '');
-          i += 2;
-        } else {
-          result += content[i];
-          i++;
-        }
-      }
-      if (i < len) result += content[i]; // Comilla de cierre
-      i++;
-      continue;
-    }
-    
-    // Manejar comentarios de línea //
-    if (char === '/' && nextChar === '/') {
-      // Saltar hasta el final de la línea
-      while (i < len && content[i] !== '\n') {
-        i++;
-      }
-      if (i < len) result += content[i]; // Preservar el \n
-      i++;
-      continue;
-    }
-    
-    // Manejar comentarios de bloque /* */
-    if (char === '/' && nextChar === '*') {
-      i += 2;
-      while (i < len - 1) {
-        if (content[i] === '*' && content[i + 1] === '/') {
-          i += 2;
-          break;
-        }
-        // Preservar saltos de línea para mantener estructura
-        if (content[i] === '\n') {
-          result += '\n';
-        }
-        i++;
-      }
-      continue;
-    }
-    
-    // Carácter normal
-    result += char;
-    i++;
-  }
-  
-  return result;
-}
-
-// Función para encontrar ES6 imports (incluyendo multilínea)
-function findES6Imports(content, imports) {
-  // Regex mejorada que maneja imports multilínea
-  const es6ImportRegex = /import\s*(?:(?:\*\s+as\s+\w+)|(?:\w+)|(?:\{[^}]*\})|(?:\w+\s*,\s*\{[^}]*\})|(?:\w+\s*,\s*\*\s+as\s+\w+))\s*from\s*['"`]([^'"`]+)['"`]/gs;
-  
-  let match;
-  while ((match = es6ImportRegex.exec(content)) !== null) {
-    imports.add(match[1]);
-  }
-  
-  // Manejo especial para imports multilínea complejos
-  const multilineImportRegex = /import\s*\{[\s\S]*?\}\s*from\s*['"`]([^'"`]+)['"`]/gs;
-  while ((match = multilineImportRegex.exec(content)) !== null) {
-    imports.add(match[1]);
-  }
-  
-  // Import side-effects (sin destructuring)
-  const sideEffectImportRegex = /import\s*['"`]([^'"`]+)['"`]/g;
-  while ((match = sideEffectImportRegex.exec(content)) !== null) {
-    imports.add(match[1]);
-  }
-  
-  // Import type (TypeScript)
-  const typeImportRegex = /import\s+type\s*(?:\{[^}]*\}|\w+)\s*from\s*['"`]([^'"`]+)['"`]/gs;
-  while ((match = typeImportRegex.exec(content)) !== null) {
-    imports.add(match[1]);
-  }
-}
-
-// Función para encontrar CommonJS requires
-function findCommonJSRequires(content, imports) {
-  // Require con asignación a variable
-  const requireRegex = /(?:const|let|var)\s+(?:\{[^}]*\}|\w+)\s*=\s*require\s*\(\s*['"`]([^'"`]+)['"`]\s*\)/g;
-  let match;
-  while ((match = requireRegex.exec(content)) !== null) {
-    imports.add(match[1]);
-  }
-  
-  // Require directo sin asignación
-  const directRequireRegex = /require\s*\(\s*['"`]([^'"`]+)['"`]\s*\)/g;
-  while ((match = directRequireRegex.exec(content)) !== null) {
-    imports.add(match[1]);
-  }
-  
-  // Require con destructuring multilínea
-  const destructuringRequireRegex = /(?:const|let|var)\s*\{[\s\S]*?\}\s*=\s*require\s*\(\s*['"`]([^'"`]+)['"`]\s*\)/g;
-  while ((match = destructuringRequireRegex.exec(content)) !== null) {
-    imports.add(match[1]);
-  }
-}
-
-// Función para encontrar dynamic imports
-function findDynamicImports(content, imports) {
-  // Dynamic import() calls
-  const dynamicImportRegex = /import\s*\(\s*['"`]([^'"`]+)['"`]\s*\)/g;
-  let match;
-  while ((match = dynamicImportRegex.exec(content)) !== null) {
-    imports.add(match[1]);
-  }
-  
-  // Dynamic import con await
-  const awaitImportRegex = /await\s+import\s*\(\s*['"`]([^'"`]+)['"`]\s*\)/g;
-  while ((match = awaitImportRegex.exec(content)) !== null) {
-    imports.add(match[1]);
-  }
-}
-
-// Función para encontrar AMD requires (require.js)
-function findAMDRequires(content, imports) {
-  // AMD define con dependencies
-  const amdDefineRegex = /define\s*\(\s*\[([^\]]*)\]/g;
-  let match;
-  while ((match = amdDefineRegex.exec(content)) !== null) {
-    const deps = match[1];
-    const depMatches = deps.match(/['"`]([^'"`]+)['"`]/g);
-    if (depMatches) {
-      depMatches.forEach(dep => {
-        const cleanDep = dep.replace(/['"`]/g, '');
-        if (cleanDep && !cleanDep.startsWith('!')) { // Ignorar plugins de require.js
-          imports.add(cleanDep);
-        }
-      });
-    }
-  }
-  
-  // AMD require calls
-  const amdRequireRegex = /require\s*\(\s*\[([^\]]*)\]/g;
-  while ((match = amdRequireRegex.exec(content)) !== null) {
-    const deps = match[1];
-    const depMatches = deps.match(/['"`]([^'"`]+)['"`]/g);
-    if (depMatches) {
-      depMatches.forEach(dep => {
-        const cleanDep = dep.replace(/['"`]/g, '');
-        if (cleanDep && !cleanDep.startsWith('!')) {
-          imports.add(cleanDep);
-        }
-      });
-    }
-  }
-}
-
-// Función mejorada para parsear imports de un archivo
+// Función para parsear imports de un archivo
 function parseImports(content, filePath) {
   const imports = new Set();
+  const lines = content.split('\n');
   
-  // Normalizar el contenido: eliminar comentarios pero preservar strings
-  const normalizedContent = removeCommentsPreservingStrings(content);
-  
-  // Buscar todos los tipos de imports usando diferentes estrategias
-  
-  // 1. ES6 imports (incluyendo multilínea)
-  findES6Imports(normalizedContent, imports);
-  
-  // 2. CommonJS requires
-  findCommonJSRequires(normalizedContent, imports);
-  
-  // 3. Dynamic imports
-  findDynamicImports(normalizedContent, imports);
-  
-  // 4. AMD requires (require.js)
-  findAMDRequires(normalizedContent, imports);
+  for (const line of lines) {
+    const trimmedLine = line.trim();
+    
+    // ES6 imports
+    const es6ImportMatch = trimmedLine.match(/^import\s+.*?from\s+['"`]([^'"`]+)['"`]/);
+    if (es6ImportMatch) {
+      imports.add(es6ImportMatch[1]);
+      continue;
+    }
+    
+    // CommonJS require
+    const commonJSMatch = trimmedLine.match(/(?:const|let|var)\s+.*?=\s+require\(['"`]([^'"`]+)['"`]\)/);
+    if (commonJSMatch) {
+      imports.add(commonJSMatch[1]);
+      continue;
+    }
+    
+    // require directo
+    const directRequireMatch = trimmedLine.match(/require\(['"`]([^'"`]+)['"`]\)/);
+    if (directRequireMatch) {
+      imports.add(directRequireMatch[1]);
+      continue;
+    }
+    
+    // Dynamic imports
+    const dynamicImportMatch = trimmedLine.match(/import\(['"`]([^'"`]+)['"`]\)/);
+    if (dynamicImportMatch) {
+      imports.add(dynamicImportMatch[1]);
+      continue;
+    }
+  }
   
   return Array.from(imports);
 }
@@ -536,7 +351,7 @@ async function followImports(entryFile, processedFiles = new Set(), spinner, max
 program
   .name('fileweaver')
   .description('A powerful CLI tool for weaving files together with advanced pattern matching capabilities')
-  .version('1.4.1')
+  .version('1.4.0')
   .option('-r, --regex <pattern>', 'regex pattern to match files')
   .option('-t, --tree <true|false>', 'add tree to output file')
   .option('-p, --prompt <prompt>', 'add prompt to output file')
