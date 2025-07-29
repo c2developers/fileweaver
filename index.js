@@ -56,9 +56,9 @@ function generateTree(files, baseDir) {
 // Función corregida para parsear imports Y re-exports de un archivo
 function parseImports(content, filePath) {
   const imports = new Set();
-
+  
   // Procesamos línea por línea primero
-  const lines = content.split("\n").slice(0, 1000); // Aumenté el límite y corregí el comentario
+  const lines = content.split("\n") // Aumenté el límite y corregí el comentario
 
   for (const line of lines) {
     const trimmedLine = line.trim();
@@ -282,12 +282,12 @@ async function resolveImportPath(
 
   // Intentar diferentes extensiones si el archivo no existe
   const extensions = ["", ".js", ".jsx", ".ts", ".tsx", ".mjs", ".cjs"];
-
   for (const ext of extensions) {
     const fullPath = resolvedPath + ext;
     try {
       const stats = await fs.stat(fullPath);
-      if (stats) {
+      // si no es un directorio, devolver la ruta
+      if (stats && !stats.isDirectory()) {
         return fullPath;
       }
     } catch (error) {
@@ -516,6 +516,7 @@ async function followImports(
       // Solo seguir imports si no hemos alcanzado la profundidad máxima
       if (depth < maxDepth) {
         const content = await fs.readFile(normalizedPath, "utf8");
+        // Parsear imports del contenido del archivo
         const imports = parseImports(content, normalizedPath);
 
         for (const importPath of imports) {

@@ -1,949 +1,1160 @@
 ==================================================
-File: ../../components/closers/closerDetailPage/CloserHeader.tsx
+File: ../../components/ui/Button/Button.tsx
 ==================================================
 
-import React from 'react';
-import {
-ArrowLeft,
-Edit,
-Trash2,
-UserCheck,
-UserX,
-Phone,
-Mail,
-RefreshCw,
-Award
-} from 'lucide-react';
-import { CloserDetailed } from '@types';
-import { formatPhoneNumber } from '@utils';
-import Button from '@components/ui/Button';
-interface CloserHeaderProps {
-closer: CloserDetailed;
-actionLoading: boolean;
-onNavigateBack: () => void;
-onRefresh: () => void;
-onEdit: () => void;
-onCall: () => void;
-onEmail: () => void;
-onActivate: () => void;
-onSuspend: () => void;
-onDelete: () => void;
+import React, { ButtonHTMLAttributes, forwardRef } from 'react';
+import { clsx } from 'clsx';
+import { Loader2 } from 'lucide-react';
+export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
+variant?: 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger';
+size?: 'sm' | 'md' | 'lg';
+isLoading?: boolean;
+fullWidth?: boolean;
+leftIcon?: React.ReactNode;
+rightIcon?: React.ReactNode;
 }
-const CloserHeader: React.FC<CloserHeaderProps> = ({
-closer,
-actionLoading,
-onNavigateBack,
-onRefresh,
-onEdit,
-onCall,
-onEmail,
-onActivate,
-onSuspend,
-onDelete
-}) => {
-const getStatusColor = (status: string) => {
-const colors: Record<string, string> = {
-'ACTIVE': 'bg-success-100 text-success-800',
-'INACTIVE': 'bg-secondary-100 text-secondary-800',
-'SUSPENDED': 'bg-warning-100 text-warning-800'
-};
-return colors[status] || 'bg-secondary-100 text-secondary-800';
-};
-const getStatusLabel = (status: string) => {
-const labels: Record<string, string> = {
-'ACTIVE': 'Activo',
-'INACTIVE': 'Inactivo',
-'SUSPENDED': 'Suspendido'
-};
-return labels[status] || status;
-};
-return (
-<div className="flex items-center justify-between">
-<div className="flex items-center space-x-4">
-<Button
-variant="ghost"
-size="sm"
-onClick={onNavigateBack}
-leftIcon={<ArrowLeft size={18} />}
->
-Volver a Closers
-</Button>
-<div className="flex items-center space-x-4">
-{closer.avatar ? (
-<img
-src={closer.avatar}
-alt={`${closer.firstName} ${closer.lastName}`}
-className="w-16 h-16 rounded-full object-cover"
-/>
-) : (
-<div className="w-16 h-16 bg-primary-100 rounded-full flex items-center justify-center">
-<span className="text-xl font-semibold text-primary-600">
-{closer.firstName[0]}{closer.lastName[0]}
-</span>
-</div>
-)}
-<div>
-<h1 className="text-2xl font-bold text-secondary-900">
-{closer.firstName} {closer.lastName}
-</h1>
-<div className="flex items-center space-x-3 mt-1">
-<span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(closer.status)}`}>
-{getStatusLabel(closer.status)}
-</span>
-{closer.isVerified && (
-<span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-medium flex items-center">
-<Award size={12} className="mr-1" />
-Verificado
-</span>
-)}
-<div className="flex items-center text-sm text-secondary-600">
-<Mail size={14} className="mr-1" />
-{closer.email}
-</div>
-<div className="flex items-center text-sm text-secondary-600">
-<Phone size={14} className="mr-1" />
-{formatPhoneNumber(closer.phone)}
-</div>
-</div>
-</div>
-</div>
-</div>
-<div className="flex space-x-2">
-<Button
-variant="ghost"
-size="sm"
-onClick={onRefresh}
-leftIcon={<RefreshCw size={16} />}
-disabled={actionLoading}
->
-Actualizar
-</Button>
-<Button
-variant="outline"
-size="sm"
-onClick={onEdit}
-leftIcon={<Edit size={16} />}
-disabled={actionLoading}
->
-Editar
-</Button>
-<Button
-variant="outline"
-size="sm"
-onClick={onCall}
-leftIcon={<Phone size={16} />}
-disabled={actionLoading}
->
-Llamar
-</Button>
-<Button
-variant="outline"
-size="sm"
-onClick={onEmail}
-leftIcon={<Mail size={16} />}
-disabled={actionLoading}
->
-Email
-</Button>
-{closer.status === 'ACTIVE' ? (
-<Button
-variant="outline"
-size="sm"
-onClick={onSuspend}
-leftIcon={<UserX size={16} />}
-disabled={actionLoading}
-isLoading={actionLoading}
->
-Suspender
-</Button>
-) : (
-<Button
-variant="outline"
-size="sm"
-onClick={onActivate}
-leftIcon={<UserCheck size={16} />}
-disabled={actionLoading}
-isLoading={actionLoading}
->
-Activar
-</Button>
-)}
-<Button
-variant="danger"
-size="sm"
-onClick={onDelete}
-leftIcon={<Trash2 size={16} />}
-disabled={actionLoading}
->
-Eliminar
-</Button>
-</div>
-</div>
-);
-};
-export default CloserHeader;
-
-==================================================
-File: ../../components/closers/closerDetailPage/CloserMetrics.tsx
-==================================================
-
-import React from 'react';
-import {
-DollarSign,
-Target,
-TrendingUp,
-Award,
-CreditCard,
-AlertTriangle
-} from 'lucide-react';
-import { CloserMetrics as MetricsType } from '@types';
-import { formatCurrency, formatNumber, formatPercentage } from '@utils';
-interface CloserMetricsProps {
-metrics: MetricsType;
-}
-interface MetricCardProps {
-title: string;
-value: string;
-subtitle: string;
-icon: React.ReactNode;
-iconBgColor: string;
-valueColor?: string;
-subtitleColor?: string;
-}
-const MetricCard: React.FC<MetricCardProps> = ({
-title,
-value,
-subtitle,
-icon,
-iconBgColor,
-valueColor = 'text-secondary-900',
-subtitleColor = 'text-secondary-600'
-}) => (
-<div className="bg-white rounded-lg shadow-sm border border-secondary-200 p-6">
-<div className="flex items-center justify-between">
-<div>
-<p className="text-sm text-secondary-600">{title}</p>
-<p className={`text-2xl font-bold ${valueColor}`}>{value}</p>
-<p className={`text-sm ${subtitleColor} mt-1`}>{subtitle}</p>
-</div>
-<div className={`p-3 ${iconBgColor} rounded-lg`}>
-{icon}
-</div>
-</div>
-</div>
-);
-const CloserMetrics: React.FC<CloserMetricsProps> = ({ metrics }) => {
-const metricsConfig = [
+const Button = forwardRef<HTMLButtonElement, ButtonProps>(
+(
 {
-title: 'Ingresos Totales',
-value: formatCurrency(metrics.totalRevenue),
-subtitle: `+${formatPercentage(metrics.monthlyGrowth)}% este mes`,
-icon: <DollarSign size={24} className="text-success-600" />,
-iconBgColor: 'bg-success-50',
-valueColor: 'text-success-600',
-subtitleColor: 'text-success-600'
+className,
+variant = 'primary',
+size = 'md',
+isLoading = false,
+fullWidth = false,
+leftIcon,
+rightIcon,
+children,
+disabled,
+...props
 },
-{
-title: 'Ventas Totales',
-value: formatNumber(metrics.totalSales),
-subtitle: `Ticket: ${formatCurrency(metrics.averageTicket)}`,
-icon: <Target size={24} className="text-primary-600" />,
-iconBgColor: 'bg-primary-50',
-valueColor: 'text-primary-600'
-},
-{
-title: 'Conversión',
-value: formatPercentage(metrics.conversionRate),
-subtitle: `${metrics.clientsConverted} de ${metrics.clientsAssigned}`,
-icon: <TrendingUp size={24} className="text-warning-600" />,
-iconBgColor: 'bg-warning-50',
-valueColor: 'text-warning-600'
-},
-{
-title: 'Comisiones',
-value: formatCurrency(metrics.pendingCommission),
-subtitle: `Pagadas: ${formatCurrency(metrics.paidCommission)}`,
-icon: <Award size={24} className="text-error-600" />,
-iconBgColor: 'bg-error-50',
-valueColor: 'text-error-600',
-subtitleColor: 'text-success-600'
-},
-{
-title: 'Financiamientos',
-value: formatNumber(metrics.clientsWithFinancing),
-subtitle: formatCurrency(metrics.financedAmount),
-icon: <CreditCard size={24} className="text-purple-600" />,
-iconBgColor: 'bg-purple-50',
-valueColor: 'text-purple-600',
-subtitleColor: 'text-purple-600'
-},
-{
-title: 'Pagos Atrasados',
-value: formatNumber(metrics.clientsWithOverduePayments),
-subtitle: formatCurrency(metrics.totalOverdueAmount),
-icon: <AlertTriangle size={24} className="text-red-600" />,
-iconBgColor: 'bg-red-50',
-valueColor: 'text-red-600',
-subtitleColor: 'text-red-600'
-}
-];
-return (
-<>
-{}
-<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 gap-6">
-{metricsConfig.map((metric, index) => (
-<MetricCard key={index} {...metric} />
-))}
-</div>
-{}
-<div className="bg-white rounded-lg shadow-sm border border-secondary-200 p-6">
-<div className="flex items-center justify-between mb-4">
-<h3 className="text-lg font-semibold text-secondary-900">Tasa de Cobro</h3>
-<span className="text-2xl font-bold text-secondary-900">
-{formatPercentage(metrics.collectionRate)}
-</span>
-</div>
-<div className="w-full bg-secondary-200 rounded-full h-3">
-<div
-className="bg-success-600 h-3 rounded-full transition-all duration-300"
-style={{ width: `${metrics.collectionRate}%` }}
-></div>
-</div>
-<div className="flex justify-between text-sm text-secondary-600 mt-2">
-<span>Pagos puntuales</span>
-<span>Pagos totales</span>
-</div>
-</div>
-</>
-);
-};
-export default CloserMetrics;
-
-==================================================
-File: ../../components/closers/closerDetailPage/CloserModals.tsx
-==================================================
-
-import React from 'react';
-import { CheckCircle, Clock, AlertCircle, XCircle } from 'lucide-react';
-import { CloserDetailed, CloserClientDetailed } from '@types';
-import { formatCurrency, formatDate, formatRelativeTime } from '@utils';
-import Button from '@components/ui/Button';
-import Modal from '@components/ui/Modal';
-interface CloserModalsProps {
-showDeleteModal: boolean;
-onCloseDeleteModal: () => void;
-onConfirmDelete: () => void;
-actionLoading: boolean;
-closer: CloserDetailed;
-selectedClientDetail: CloserClientDetailed | null;
-onCloseClientDetail: () => void;
-}
-const CloserModals: React.FC<CloserModalsProps> = ({
-showDeleteModal,
-onCloseDeleteModal,
-onConfirmDelete,
-actionLoading,
-closer,
-selectedClientDetail,
-onCloseClientDetail
-}) => {
-const getPaymentStatusIcon = (status: string) => {
-const icons: Record<string, React.ReactNode> = {
-'paid': <CheckCircle size={16} className="text-success-600" />,
-'pending': <Clock size={16} className="text-warning-600" />,
-'overdue': <AlertCircle size={16} className="text-error-600" />,
-'cancelled': <XCircle size={16} className="text-secondary-600" />,
-'refunded': <XCircle size={16} className="text-error-600" />
-};
-return icons[status] || <Clock size={16} className="text-secondary-600" />;
-};
-const getClientStatusColor = (status: string) => {
-const colors: Record<string, string> = {
-'lead': 'text-secondary-600',
-'qualified': 'text-primary-600',
-'negotiating': 'text-warning-600',
-'won': 'text-success-600',
-'lost': 'text-error-600',
-'nurturing': 'text-purple-600'
-};
-return colors[status] || 'text-secondary-600';
-};
-return (
-<>
-{}
-{selectedClientDetail && (
-<Modal
-isOpen={!!selectedClientDetail}
-onClose={onCloseClientDetail}
-title={`Detalles de ${selectedClientDetail.name}`}
-size="lg"
->
-<div className="space-y-6">
-{}
-<div className="flex items-start space-x-4">
-<div className="h-16 w-16 rounded-full bg-primary-100 flex items-center justify-center">
-<span className="text-xl font-semibold text-primary-600">
-{selectedClientDetail.name.split(' ').map(n => n[0]).join('')}
-</span>
-</div>
-<div className="flex-1">
-<h3 className="text-lg font-semibold text-secondary-900">{selectedClientDetail.name}</h3>
-<div className="flex items-center space-x-4 text-sm text-secondary-600 mt-1">
-<span>{selectedClientDetail.email}</span>
-<span>{selectedClientDetail.phone}</span>
-<span className={`px-2 py-1 rounded-full text-xs font-medium ${getClientStatusColor(selectedClientDetail.status)}`}>
-{selectedClientDetail.status}
-</span>
-</div>
-</div>
-</div>
-{}
-{selectedClientDetail.totalSpent > 0 && (
-<div className="grid grid-cols-3 gap-4">
-<div className="bg-success-50 border border-success-200 rounded-lg p-4 text-center">
-<div className="text-xl font-bold text-success-600">{formatCurrency(selectedClientDetail.totalSpent)}</div>
-<div className="text-sm text-success-700">Total Gastado</div>
-</div>
-<div className="bg-warning-50 border border-warning-200 rounded-lg p-4 text-center">
-<div className="text-xl font-bold text-warning-600">{formatCurrency(selectedClientDetail.totalPending)}</div>
-<div className="text-sm text-warning-700">Pendiente</div>
-</div>
-<div className="bg-error-50 border border-error-200 rounded-lg p-4 text-center">
-<div className="text-xl font-bold text-error-600">{formatCurrency(selectedClientDetail.totalOverdue)}</div>
-<div className="text-sm text-error-700">Atrasado</div>
-</div>
-</div>
-)}
-{}
-{selectedClientDetail.paymentPlan && (
-<div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
-<h4 className="font-medium text-secondary-900 mb-3">Plan de Financiamiento</h4>
-<div className="grid grid-cols-2 gap-4 text-sm">
-<div>
-<span className="text-secondary-600">Total:</span>
-<span className="ml-2 font-medium">{formatCurrency(selectedClientDetail.paymentPlan.totalAmount)}</span>
-</div>
-<div>
-<span className="text-secondary-600">Cuotas:</span>
-<span className="ml-2 font-medium">{selectedClientDetail.paymentPlan.installments}</span>
-</div>
-<div>
-<span className="text-secondary-600">Monto mensual:</span>
-<span className="ml-2 font-medium">{formatCurrency(selectedClientDetail.paymentPlan.monthlyAmount)}</span>
-</div>
-<div>
-<span className="text-secondary-600">Pagos restantes:</span>
-<span className="ml-2 font-medium">{selectedClientDetail.paymentPlan.remainingPayments}</span>
-</div>
-<div className="col-span-2">
-<span className="text-secondary-600">Próximo pago:</span>
-<span className="ml-2 font-medium">{formatDate(selectedClientDetail.paymentPlan.nextPaymentDate)}</span>
-</div>
-</div>
-</div>
-)}
-{}
-{selectedClientDetail.payments.length > 0 && (
-<div>
-<h4 className="font-medium text-secondary-900 mb-3">Historial de Pagos</h4>
-<div className="max-h-60 overflow-y-auto">
-<table className="min-w-full divide-y divide-secondary-200">
-<thead className="bg-secondary-50">
-<tr>
-<th className="px-4 py-2 text-left text-xs font-medium text-secondary-500 uppercase">Cuota</th>
-<th className="px-4 py-2 text-left text-xs font-medium text-secondary-500 uppercase">Monto</th>
-<th className="px-4 py-2 text-left text-xs font-medium text-secondary-500 uppercase">Vencimiento</th>
-<th className="px-4 py-2 text-left text-xs font-medium text-secondary-500 uppercase">Estado</th>
-</tr>
-</thead>
-<tbody className="bg-white divide-y divide-secondary-200">
-{selectedClientDetail.payments.map((payment) => (
-<tr key={payment.id}>
-<td className="px-4 py-2 text-sm">{payment.installmentNumber}/{payment.totalInstallments}</td>
-<td className="px-4 py-2 text-sm font-medium">{formatCurrency(payment.amount)}</td>
-<td className="px-4 py-2 text-sm">{formatDate(payment.dueDate)}</td>
-<td className="px-4 py-2">
-<div className="flex items-center">
-{getPaymentStatusIcon(payment.status)}
-<span className="ml-2 text-sm">
-{payment.status === 'paid' ? 'Pagado' :
-payment.status === 'pending' ? 'Pendiente' :
-payment.status === 'overdue' ? 'Atrasado' : 'Cancelado'}
-</span>
-</div>
-</td>
-</tr>
-))}
-</tbody>
-</table>
-</div>
-</div>
-)}
-{}
-<div>
-<h4 className="font-medium text-secondary-900 mb-3">Historial de Interacciones</h4>
-<div className="max-h-60 overflow-y-auto space-y-3">
-{selectedClientDetail.interactionHistory.slice(0, 10).map((interaction) => (
-<div key={interaction.id} className="flex items-start space-x-3 p-3 bg-secondary-50 rounded-lg">
-<div className="flex-shrink-0 w-2 h-2 bg-primary-600 rounded-full mt-2"></div>
-<div className="flex-1 min-w-0">
-<div className="flex items-center space-x-2">
-<span className="text-sm font-medium text-secondary-900">{interaction.title}</span>
-<span className={`text-xs px-2 py-1 rounded-full ${
-interaction.outcome === 'positive' ? 'bg-success-100 text-success-700' :
-interaction.outcome === 'negative' ? 'bg-error-100 text-error-700' :
-'bg-secondary-100 text-secondary-700'
-}`}>
-{interaction.outcome === 'positive' ? 'Positivo' :
-interaction.outcome === 'negative' ? 'Negativo' : 'Neutral'}
-</span>
-</div>
-{interaction.description && (
-<p className="text-sm text-secondary-600">{interaction.description}</p>
-)}
-<div className="flex items-center space-x-4 text-xs text-secondary-500 mt-1">
-<span>{formatRelativeTime(interaction.date)}</span>
-{interaction.duration && (
-<span>{interaction.duration} min</span>
-)}
-</div>
-</div>
-</div>
-))}
-</div>
-</div>
-</div>
-</Modal>
-)}
-{}
-<Modal
-isOpen={showDeleteModal}
-onClose={onCloseDeleteModal}
-title="Confirmar eliminación"
-footer={
-<div className="flex space-x-3">
-<Button
-variant="outline"
-onClick={onCloseDeleteModal}
-disabled={actionLoading}
->
-Cancelar
-</Button>
-<Button
-variant="danger"
-onClick={onConfirmDelete}
-isLoading={actionLoading}
-disabled={actionLoading}
->
-Eliminar
-</Button>
-</div>
-}
->
-<p className="text-secondary-600">
-¿Estás seguro de que quieres eliminar al closer <strong>"{closer.firstName} {closer.lastName}"</strong>?
-Esta acción no se puede deshacer.
-</p>
-{closer.totalSales > 0 && (
-<div className="mt-3 p-3 bg-warning-50 border border-warning-200 rounded-lg">
-<p className="text-sm text-warning-800">
-<strong>Advertencia:</strong> Este closer tiene {closer.totalSales} ventas realizadas.
-</p>
-</div>
-)}
-</Modal>
-</>
-);
-};
-export default CloserModals;
-
-==================================================
-File: ../../hooks/useClosers.ts
-==================================================
-
-import { useState, useEffect, useCallback } from 'react';
-import {
-Closer,
-CloserFormData,
-CloserFilters,
-CloserStats,
-CloserDashboardData,
-PaginatedResponse,
-PaginationParams,
-LoadingState
-} from '@types';
-import { closersMockService } from '@services/closers/closers.mock.service';
-interface UseClosersReturn extends LoadingState {
-closers: Closer[];
-pagination: PaginatedResponse<Closer>['pagination'] | null;
-stats: CloserStats | null;
-specialties: string[];
-languages: string[];
-fetchClosers: (pagination: PaginationParams, filters?: CloserFilters) => Promise<void>;
-fetchCloserById: (id: string) => Promise<Closer | null>;
-createCloser: (data: CloserFormData) => Promise<Closer | null>;
-updateCloser: (id: string, data: Partial<CloserFormData>) => Promise<Closer | null>;
-deleteCloser: (id: string) => Promise<boolean>;
-activateCloser: (id: string) => Promise<Closer | null>;
-suspendCloser: (id: string) => Promise<Closer | null>;
-fetchStats: () => Promise<void>;
-fetchSpecialties: () => Promise<void>;
-fetchLanguages: () => Promise<void>;
-fetchCloserDashboard: (closerId: string) => Promise<CloserDashboardData | null>;
-refreshClosers: () => Promise<void>;
-clearError: () => void;
-}
-export const useClosers = (): UseClosersReturn => {
-const [closers, setClosers] = useState<Closer[]>([]);
-const [pagination, setPagination] = useState<PaginatedResponse<Closer>['pagination'] | null>(null);
-const [stats, setStats] = useState<CloserStats | null>(null);
-const [specialties, setSpecialties] = useState<string[]>([]);
-const [languages, setLanguages] = useState<string[]>([]);
-const [isLoading, setIsLoading] = useState(false);
-const [error, setError] = useState<any>(null);
-const [currentPagination, setCurrentPagination] = useState<PaginationParams>({
-page: 1,
-limit: 12,
-sortBy: 'updatedAt',
-sortOrder: 'desc'
-});
-const [currentFilters, setCurrentFilters] = useState<CloserFilters | undefined>();
-const clearError = useCallback(() => {
-setError(null);
-}, []);
-const fetchClosers = useCallback(async (
-paginationParams: PaginationParams,
-filters?: CloserFilters
+ref
 ) => {
-setIsLoading(true);
-setError(null);
-try {
-const response = await closersMockService.getClosers(paginationParams, filters);
-setClosers(response.data);
-setPagination(response.pagination);
-setCurrentPagination(paginationParams);
-setCurrentFilters(filters);
-} catch (err) {
-setError(err);
-console.error('Error fetching closers:', err);
-} finally {
-setIsLoading(false);
-}
-}, []);
-const fetchCloserById = useCallback(async (id: string): Promise<Closer | null> => {
-setIsLoading(true);
-setError(null);
-try {
-const closer = await closersMockService.getCloserById(id);
-return closer;
-} catch (err) {
-setError(err);
-console.error('Error fetching closer:', err);
-return null;
-} finally {
-setIsLoading(false);
-}
-}, []);
-const fetchCloserDashboard = useCallback(async (closerId: string): Promise<CloserDashboardData | null> => {
-setIsLoading(true);
-setError(null);
-try {
-const dashboardData = await closersMockService.getCloserDashboard(closerId);
-return dashboardData;
-} catch (err) {
-setError(err);
-console.error('Error fetching closer dashboard:', err);
-return null;
-} finally {
-setIsLoading(false);
-}
-}, []);
-const createCloser = useCallback(async (data: CloserFormData): Promise<Closer | null> => {
-setIsLoading(true);
-setError(null);
-try {
-const newCloser = await closersMockService.createCloser(data);
-setClosers(prev => [newCloser, ...prev]);
-if (stats) {
-setStats(prev => prev ? {
-...prev,
-totalClosers: prev.totalClosers + 1,
-activeClosers: prev.activeClosers + 1
-} : null);
-}
-return newCloser;
-} catch (err) {
-setError(err);
-console.error('Error creating closer:', err);
-return null;
-} finally {
-setIsLoading(false);
-}
-}, [stats]);
-const updateCloser = useCallback(async (
-id: string,
-data: Partial<CloserFormData>
-): Promise<Closer | null> => {
-setIsLoading(true);
-setError(null);
-try {
-const updatedCloser = await closersMockService.updateCloser(id, data);
-setClosers(prev =>
-prev.map(closer => closer.id === id ? updatedCloser : closer)
+const baseClasses = 'inline-flex items-center justify-center font-medium rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed';
+const variantClasses = {
+primary: 'bg-primary-600 text-white hover:bg-primary-700 focus:ring-primary-500 shadow-sm hover:shadow-md',
+secondary: 'bg-secondary-100 text-secondary-900 hover:bg-secondary-200 focus:ring-secondary-500',
+outline: 'border border-secondary-300 text-secondary-700 hover:bg-secondary-50 focus:ring-secondary-500',
+ghost: 'text-secondary-600 hover:bg-secondary-100 focus:ring-secondary-500',
+danger: 'bg-error-600 text-white hover:bg-error-700 focus:ring-error-500 shadow-sm hover:shadow-md'
+};
+const sizeClasses = {
+sm: 'px-3 py-1.5 text-sm',
+md: 'px-4 py-2 text-sm',
+lg: 'px-6 py-3 text-base'
+};
+const widthClasses = fullWidth ? 'w-full' : '';
+const combinedClasses = clsx(
+baseClasses,
+variantClasses[variant],
+sizeClasses[size],
+widthClasses,
+className
 );
-return updatedCloser;
-} catch (err) {
-setError(err);
-console.error('Error updating closer:', err);
-return null;
-} finally {
-setIsLoading(false);
-}
-}, []);
-const deleteCloser = useCallback(async (id: string): Promise<boolean> => {
-setIsLoading(true);
-setError(null);
-try {
-await closersMockService.deleteCloser(id);
-setClosers(prev => prev.filter(closer => closer.id !== id));
-if (stats) {
-setStats(prev => prev ? {
-...prev,
-totalClosers: prev.totalClosers - 1
-} : null);
-}
-return true;
-} catch (err) {
-setError(err);
-console.error('Error deleting closer:', err);
-return false;
-} finally {
-setIsLoading(false);
-}
-}, [stats]);
-const activateCloser = useCallback(async (id: string): Promise<Closer | null> => {
-setIsLoading(true);
-setError(null);
-try {
-const activatedCloser = await closersMockService.activateCloser(id);
-setClosers(prev =>
-prev.map(closer => closer.id === id ? activatedCloser : closer)
+const iconSize = size === 'sm' ? 16 : size === 'lg' ? 20 : 18;
+return (
+<button
+ref={ref}
+className={combinedClasses}
+disabled={disabled || isLoading}
+{...props}
+>
+{isLoading ? (
+<Loader2 size={iconSize} className="animate-spin mr-2" />
+) : leftIcon ? (
+<span className="mr-2" style={{ width: iconSize, height: iconSize }}>
+{leftIcon}
+</span>
+) : null}
+{children}
+{rightIcon && !isLoading && (
+<span className="ml-2" style={{ width: iconSize, height: iconSize }}>
+{rightIcon}
+</span>
+)}
+</button>
 );
-if (stats) {
-const currentCloser = closers.find(c => c.id === id);
-if (currentCloser?.status !== 'ACTIVE') {
-setStats(prev => prev ? {
-...prev,
-activeClosers: prev.activeClosers + 1,
-inactiveClosers: Math.max(0, prev.inactiveClosers - 1)
-} : null);
 }
-}
-return activatedCloser;
-} catch (err) {
-setError(err);
-console.error('Error activating closer:', err);
-return null;
-} finally {
-setIsLoading(false);
-}
-}, [stats, closers]);
-const suspendCloser = useCallback(async (id: string): Promise<Closer | null> => {
-setIsLoading(true);
-setError(null);
-try {
-const suspendedCloser = await closersMockService.suspendCloser(id);
-setClosers(prev =>
-prev.map(closer => closer.id === id ? suspendedCloser : closer)
 );
-if (stats) {
-const currentCloser = closers.find(c => c.id === id);
-if (currentCloser?.status === 'ACTIVE') {
-setStats(prev => prev ? {
-...prev,
-activeClosers: Math.max(0, prev.activeClosers - 1),
-suspendedClosers: prev.suspendedClosers + 1
-} : null);
+Button.displayName = 'Button';
+export default Button;
+
+==================================================
+File: ../../components/ui/Button/index.ts
+==================================================
+
+export { default } from './Button';
+export type { ButtonProps } from './Button';
+
+==================================================
+File: ../../components/ui/Input/Input.tsx
+==================================================
+
+import React, { InputHTMLAttributes, forwardRef, useState } from 'react';
+import { clsx } from 'clsx';
+import { Eye, EyeOff, AlertCircle } from 'lucide-react';
+export interface InputProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'size'> {
+label?: string;
+error?: string;
+helperText?: string;
+size?: 'sm' | 'md' | 'lg';
+leftIcon?: React.ReactNode;
+rightIcon?: React.ReactNode;
+fullWidth?: boolean;
 }
-}
-return suspendedCloser;
-} catch (err) {
-setError(err);
-console.error('Error suspending closer:', err);
-return null;
-} finally {
-setIsLoading(false);
-}
-}, [stats, closers]);
-const fetchStats = useCallback(async () => {
-try {
-const statsData = await closersMockService.getClosersStats();
-setStats(statsData);
-} catch (err) {
-console.error('Error fetching closers stats:', err);
-}
-}, []);
-const fetchSpecialties = useCallback(async () => {
-try {
-const specialtiesData = await closersMockService.getSpecialties();
-setSpecialties(specialtiesData);
-} catch (err) {
-console.error('Error fetching specialties:', err);
-}
-}, []);
-const fetchLanguages = useCallback(async () => {
-try {
-const languagesData = await closersMockService.getLanguages();
-setLanguages(languagesData);
-} catch (err) {
-console.error('Error fetching languages:', err);
-}
-}, []);
-const refreshClosers = useCallback(async () => {
-await fetchClosers(currentPagination, currentFilters);
-}, [fetchClosers, currentPagination, currentFilters]);
-useEffect(() => {
-fetchSpecialties();
-fetchLanguages();
-fetchStats();
-}, [fetchSpecialties, fetchLanguages, fetchStats]);
-return {
-closers,
-pagination,
-stats,
-specialties,
-languages,
-isLoading,
+const Input = forwardRef<HTMLInputElement, InputProps>(
+(
+{
+className,
+type = 'text',
+label,
 error,
-fetchClosers,
-fetchCloserById,
-createCloser,
-updateCloser,
-deleteCloser,
-activateCloser,
-suspendCloser,
-fetchStats,
-fetchSpecialties,
-fetchLanguages,
-fetchCloserDashboard,
-refreshClosers,
-clearError
+helperText,
+size = 'md',
+leftIcon,
+rightIcon,
+fullWidth = true,
+disabled,
+...props
+},
+ref
+) => {
+const [showPassword, setShowPassword] = useState(false);
+const isPassword = type === 'password';
+const inputType = isPassword && showPassword ? 'text' : type;
+const baseClasses = 'border rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-1 disabled:opacity-50 disabled:cursor-not-allowed';
+const sizeClasses = {
+sm: 'px-3 py-1.5 text-sm',
+md: 'px-3 py-2 text-sm',
+lg: 'px-4 py-3 text-base'
 };
-};
+const stateClasses = error
+? 'border-error-300 focus:border-error-500 focus:ring-error-200'
+: 'border-secondary-300 focus:border-primary-500 focus:ring-primary-200';
+const widthClasses = fullWidth ? 'w-full' : '';
+const inputClasses = clsx(
+baseClasses,
+sizeClasses[size],
+stateClasses,
+widthClasses,
+leftIcon && 'pl-10',
+(rightIcon || isPassword) && 'pr-10',
+className
+);
+const iconSize = size === 'sm' ? 16 : size === 'lg' ? 20 : 18;
+return (
+<div className={clsx('relative', fullWidth && 'w-full')}>
+{label && (
+<label className="block text-sm font-medium text-secondary-700 mb-1">
+{label}
+</label>
+)}
+<div className="relative">
+{leftIcon && (
+<div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+<span className="text-secondary-400" style={{ width: iconSize, height: iconSize }}>
+{leftIcon}
+</span>
+</div>
+)}
+<input
+ref={ref}
+type={inputType}
+className={inputClasses}
+disabled={disabled}
+{...props}
+/>
+{isPassword && (
+<div className="absolute inset-y-0 right-0 pr-3 flex items-center">
+<button
+type="button"
+onClick={() => setShowPassword(!showPassword)}
+className="text-secondary-400 hover:text-secondary-600 focus:outline-none"
+disabled={disabled}
+>
+{showPassword ? (
+<EyeOff size={iconSize} />
+) : (
+<Eye size={iconSize} />
+)}
+</button>
+</div>
+)}
+{rightIcon && !isPassword && (
+<div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+<span className="text-secondary-400" style={{ width: iconSize, height: iconSize }}>
+{rightIcon}
+</span>
+</div>
+)}
+</div>
+{error && (
+<div className="mt-1 flex items-center text-sm text-error-600">
+<AlertCircle size={14} className="mr-1" />
+{error}
+</div>
+)}
+{helperText && !error && (
+<p className="mt-1 text-sm text-secondary-500">{helperText}</p>
+)}
+</div>
+);
+}
+);
+Input.displayName = 'Input';
+export default Input;
 
 ==================================================
-File: CloserDetailPage.tsx
+File: ../../components/ui/Input/index.ts
 ==================================================
 
-import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { CloserDashboardData } from '@/types';
-import { useClosers } from '@/hooks/useClosers';
+export { default } from './Input';
+export type { InputProps } from './Input';
+
+==================================================
+File: ../../components/ui/LoadingSpinner/LoadingSpinner.tsx
+==================================================
+
+import React from 'react';
+import { clsx } from 'clsx';
+import { Loader2 } from 'lucide-react';
+export interface LoadingSpinnerProps {
+size?: 'sm' | 'md' | 'lg';
+variant?: 'primary' | 'secondary';
+className?: string;
+text?: string;
+}
+const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
+size = 'md',
+variant = 'primary',
+className,
+text
+}) => {
+const sizeClasses = {
+sm: 'w-4 h-4',
+md: 'w-6 h-6',
+lg: 'w-8 h-8'
+};
+const variantClasses = {
+primary: 'text-primary-600',
+secondary: 'text-secondary-500'
+};
+const textSizeClasses = {
+sm: 'text-sm',
+md: 'text-base',
+lg: 'text-lg'
+};
+if (text) {
+return (
+<div className={clsx('flex items-center justify-center space-x-2', className)}>
+<Loader2
+className={clsx(
+'animate-spin',
+sizeClasses[size],
+variantClasses[variant]
+)}
+/>
+<span className={clsx(
+'text-secondary-600',
+textSizeClasses[size]
+)}>
+{text}
+</span>
+</div>
+);
+}
+return (
+<div className={clsx('flex justify-center', className)}>
+<Loader2
+className={clsx(
+'animate-spin',
+sizeClasses[size],
+variantClasses[variant]
+)}
+/>
+</div>
+);
+};
+export default LoadingSpinner;
+
+==================================================
+File: ../../components/ui/LoadingSpinner/index.ts
+==================================================
+
+export { default } from './LoadingSpinner';
+export type { LoadingSpinnerProps } from './LoadingSpinner';
+
+==================================================
+File: ../../components/ui/Select/Select.tsx
+==================================================
+
+import React, { SelectHTMLAttributes, forwardRef } from 'react';
+import { clsx } from 'clsx';
+import { ChevronDown, AlertCircle } from 'lucide-react';
+import { SelectOption } from '@types';
+export interface SelectProps extends Omit<SelectHTMLAttributes<HTMLSelectElement>, 'size'> {
+label?: string;
+error?: string;
+helperText?: string;
+size?: 'sm' | 'md' | 'lg';
+fullWidth?: boolean;
+options: SelectOption[];
+placeholder?: string;
+}
+const Select = forwardRef<HTMLSelectElement, SelectProps>(
+(
+{
+className,
+label,
+error,
+helperText,
+size = 'md',
+fullWidth = true,
+options,
+placeholder,
+disabled,
+...props
+},
+ref
+) => {
+const baseClasses = 'border rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-1 disabled:opacity-50 disabled:cursor-not-allowed appearance-none bg-white cursor-pointer';
+const sizeClasses = {
+sm: 'px-3 py-1.5 text-sm pr-8',
+md: 'px-3 py-2 text-sm pr-8',
+lg: 'px-4 py-3 text-base pr-10'
+};
+const stateClasses = error
+? 'border-error-300 focus:border-error-500 focus:ring-error-200'
+: 'border-secondary-300 focus:border-primary-500 focus:ring-primary-200';
+const widthClasses = fullWidth ? 'w-full' : '';
+const selectClasses = clsx(
+baseClasses,
+sizeClasses[size],
+stateClasses,
+widthClasses,
+className
+);
+const iconSize = size === 'sm' ? 16 : size === 'lg' ? 20 : 18;
+return (
+<div className={clsx('relative', fullWidth && 'w-full')}>
+{label && (
+<label className="block text-sm font-medium text-secondary-700 mb-1">
+{label}
+</label>
+)}
+<div className="relative">
+<select
+ref={ref}
+className={selectClasses}
+disabled={disabled}
+{...props}
+>
+{placeholder && (
+<option value="" disabled>
+{placeholder}
+</option>
+)}
+{options.map((option) => (
+<option
+key={option.value}
+value={option.value}
+disabled={option.disabled}
+>
+{option.label}
+</option>
+))}
+</select>
+<div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+<ChevronDown size={iconSize} className="text-secondary-400" />
+</div>
+</div>
+{error && (
+<div className="mt-1 flex items-center text-sm text-error-600">
+<AlertCircle size={14} className="mr-1" />
+{error}
+</div>
+)}
+{helperText && !error && (
+<p className="mt-1 text-sm text-secondary-500">{helperText}</p>
+)}
+</div>
+);
+}
+);
+Select.displayName = 'Select';
+export default Select;
+
+==================================================
+File: ../../components/ui/Select/index.ts
+==================================================
+
+export { default } from './Select';
+export type { SelectProps } from './Select';
+
+==================================================
+File: ../../constants/paymentMethods.ts
+==================================================
+
+import { PaymentMethod, FiscalDataType, ContactUrgency } from '@types';
+export const PAYMENT_METHODS = [
+{ value: PaymentMethod.HOTMART, label: 'Hotmart' },
+{ value: PaymentMethod.SEQURA, label: 'Sequra' },
+{ value: PaymentMethod.STRIPE, label: 'Stripe' },
+{ value: PaymentMethod.TRANSFERENCIA, label: 'Transferencia' },
+{ value: PaymentMethod.SEQURA_PASS, label: 'Sequra Pass' }
+] as const;
+export const PAYMENT_INSTALLMENTS = [
+{ value: 1, label: '1 pago' },
+{ value: 2, label: '2 pagos' },
+{ value: 3, label: '3 pagos' },
+{ value: 6, label: '6 pagos' },
+{ value: 9, label: '9 pagos' },
+{ value: 12, label: '12 pagos' },
+{ value: 18, label: '18 pagos' },
+{ value: 24, label: '24 pagos' }
+] as const;
+export const FISCAL_DATA_TYPES = [
+{ value: FiscalDataType.PERSONA_FISICA, label: 'Persona física' },
+{ value: FiscalDataType.AUTONOMO, label: 'Autónomo' },
+{ value: FiscalDataType.EMPRESA, label: 'Empresa' }
+] as const;
+export const CONTACT_URGENCY_OPTIONS = [
+{ value: ContactUrgency.NO_URGENTE, label: 'No Urgente' },
+{ value: ContactUrgency.URGENTE, label: 'Urgente' }
+] as const;
+export const PERSON_TYPE_OPTIONS = [
+{ value: 'MISMO_CLIENTE', label: 'El mismo cliente' },
+{ value: 'OTRA_PERSONA', label: 'Otra persona' }
+] as const;
+export const YES_NO_OPTIONS = [
+{ value: 'SI', label: 'Sí' },
+{ value: 'NO', label: 'No' }
+] as const;
+
+==================================================
+File: SalesFormPage.tsx
+==================================================
+
+import Button from '@/components/ui/Button';
+import React, { useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useTranslation } from 'react-i18next';
+import { SalesFormData } from '@/types/sales.types';
+import { salesFormSchema } from '@/utils/validators';
+import {
+PAYMENT_METHODS,
+PAYMENT_INSTALLMENTS,
+FISCAL_DATA_TYPES,
+CONTACT_URGENCY_OPTIONS,
+PERSON_TYPE_OPTIONS,
+YES_NO_OPTIONS
+} from '@/constants/paymentMethods';
+import Input from '@/components/ui/Input';
+import Select from '@/components/ui/Select';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
-import CloserHeader from '@/components/closers/closerDetailPage/CloserHeader';
-import CloserMetrics from '@/components/closers/closerDetailPage/CloserMetrics';
-import CloserModals from '@/components/closers/closerDetailPage/CloserModals';
-import CloserTabs from '@/components/closers/closerDetailPage/tabs/CloserTabs';
-const CloserDetailPage: React.FC = () => {
-const { id } = useParams<{ id: string }>();
-const navigate = useNavigate();
-const { fetchCloserDashboard, deleteCloser, activateCloser, suspendCloser, isLoading } = useClosers();
-const [dashboardData, setDashboardData] = useState<CloserDashboardData | null>(null);
-const [showDeleteModal, setShowDeleteModal] = useState(false);
-const [actionLoading, setActionLoading] = useState(false);
-const [activeTab, setActiveTab] = useState<'overview' | 'clients' | 'sales' | 'commissions' | 'courses' | 'performance' | 'goals'>('overview');
-const [filters, setFilters] = useState({
-clients: '',
-clientsStatus: '',
-clientsPayment: '',
-sales: '',
-commissions: ''
+const SalesFormPage: React.FC = () => {
+const { t } = useTranslation(['sales', 'common']);
+const [isSubmitting, setIsSubmitting] = useState(false);
+const {
+register,
+handleSubmit,
+watch,
+formState: { errors },
+setValue,
+reset
+} = useForm<SalesFormData>({
+resolver: zodResolver(salesFormSchema),
+defaultValues: {
+socio_o_pagador: 'MISMO_CLIENTE',
+datos_fiscales: 'PERSONA_FISICA',
+transferencia_anticipada: 'NO',
+modalidad_de_pago: 'Hotmart',
+numero_pagos_meses: 1,
+bonus: {
+mentoria_individualizada_1: false,
+mentoria_individualizada_2: false,
+mentoria_individualizada_3: false,
+mentoria_validacion_productos: false
+},
+urgencia_contacto: 'No Urgente'
+}
 });
-const [selectedClientDetail, setSelectedClientDetail] = useState<any>(null);
-useEffect(() => {
-if (id) {
-loadCloserDashboard();
-}
-}, [id]);
-const loadCloserDashboard = async () => {
-if (!id) return;
-const data = await fetchCloserDashboard(id);
-if (data) {
-setDashboardData(data);
+const watchSocioOPagador = watch('socio_o_pagador');
+const cursosOptions = [
+{ value: '1', label: 'React Avanzado con TypeScript' },
+{ value: '2', label: 'Marketing Digital para Principiantes' },
+{ value: '3', label: 'Diseño UX/UI Profesional' },
+{ value: '4', label: 'Python para Data Science' }
+];
+const closersOptions = [
+{ value: '1', label: 'Carlos Ruiz' },
+{ value: '2', label: 'María González' },
+{ value: '3', label: 'Ana López' },
+{ value: '4', label: 'Juan Martín' }
+];
+const onSubmit = async (data: SalesFormData) => {
+setIsSubmitting(true);
+try {
+await new Promise(resolve => setTimeout(resolve, 2000));
+console.log('Datos de venta:', data);
+alert('¡Venta creada exitosamente!');
+reset();
+} catch (error) {
+console.error('Error al crear la venta:', error);
+alert('Error al crear la venta. Inténtalo de nuevo.');
+} finally {
+setIsSubmitting(false);
 }
 };
-const handleDelete = async () => {
-if (!dashboardData?.closer) return;
-setActionLoading(true);
-const success = await deleteCloser(dashboardData.closer.id);
-if (success) {
-navigate('/closers');
-}
-setActionLoading(false);
-setShowDeleteModal(false);
-};
-const handleActivate = async () => {
-if (!dashboardData?.closer) return;
-setActionLoading(true);
-const updatedCloser = await activateCloser(dashboardData.closer.id);
-if (updatedCloser) {
-setDashboardData(prev => prev ? { ...prev, closer: updatedCloser } : null);
-}
-setActionLoading(false);
-};
-const handleSuspend = async () => {
-if (!dashboardData?.closer) return;
-setActionLoading(true);
-const updatedCloser = await suspendCloser(dashboardData.closer.id);
-if (updatedCloser) {
-setDashboardData(prev => prev ? { ...prev, closer: updatedCloser } : null);
-}
-setActionLoading(false);
-};
-const updateFilter = (filterType: string, value: string) => {
-setFilters(prev => ({ ...prev, [filterType]: value }));
-};
-if (isLoading || !dashboardData) {
+if (isSubmitting) {
 return (
 <div className="min-h-screen flex items-center justify-center">
-<LoadingSpinner size="lg" text="Cargando perfil del closer..." />
+<LoadingSpinner size="lg" text="Procesando venta..." />
 </div>
 );
 }
-const { closer, metrics, salesHistory, clients, commissions, performance, recentActivity, goals, courseCommissions } = dashboardData;
 return (
-<div className="max-w-7xl mx-auto space-y-6">
-<CloserHeader
-closer={closer}
-actionLoading={actionLoading}
-onNavigateBack={() => navigate('/closers')}
-onRefresh={loadCloserDashboard}
-onEdit={() => navigate(`/closers/${closer.id}/edit`)}
-onCall={() => window.open(`tel:${closer.phone}`)}
-onEmail={() => window.open(`mailto:${closer.email}`)}
-onActivate={handleActivate}
-onSuspend={handleSuspend}
-onDelete={() => setShowDeleteModal(true)}
+<div className="max-w-4xl mx-auto space-y-8">
+{}
+<div>
+<h1 className="text-2xl font-bold text-secondary-900">Formulario de Ventas</h1>
+<p className="text-secondary-600">Registra una nueva venta en el sistema</p>
+</div>
+<form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
+{}
+<div className="bg-white rounded-lg shadow-sm border border-secondary-200 p-6">
+<h2 className="text-lg font-semibold text-secondary-900 mb-4">Datos del Cliente</h2>
+<div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+<Input
+{...register('nombre')}
+label="Nombre completo *"
+error={errors.nombre?.message}
 />
-<CloserMetrics metrics={metrics} />
-<CloserTabs
-activeTab={activeTab}
-onTabChange={setActiveTab}
-dashboardData={dashboardData}
-filters={filters}
-onFilterChange={updateFilter}
-onClientDetailSelect={setSelectedClientDetail}
+<Input
+{...register('email')}
+type="email"
+label="Correo electrónico *"
+error={errors.email?.message}
 />
-<CloserModals
-showDeleteModal={showDeleteModal}
-onCloseDeleteModal={() => setShowDeleteModal(false)}
-onConfirmDelete={handleDelete}
-actionLoading={actionLoading}
-closer={closer}
-selectedClientDetail={selectedClientDetail}
-onCloseClientDetail={() => setSelectedClientDetail(null)}
+<Input
+{...register('movil')}
+type="tel"
+label="Móvil *"
+error={errors.movil?.message}
+placeholder="612345678"
 />
+</div>
+</div>
+{}
+<div className="bg-white rounded-lg shadow-sm border border-secondary-200 p-6">
+<h2 className="text-lg font-semibold text-secondary-900 mb-4">Datos del Socio/Pagador</h2>
+<div className="mb-4">
+<Select
+{...register('socio_o_pagador')}
+label="¿Quién paga? *"
+options={PERSON_TYPE_OPTIONS}
+error={errors.socio_o_pagador?.message}
+/>
+</div>
+{watchSocioOPagador === 'OTRA_PERSONA' && (
+<div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+<Input
+{...register('nombre_2_opcional')}
+label="Nombre del pagador"
+error={errors.nombre_2_opcional?.message}
+/>
+<Input
+{...register('email_2_opcional')}
+type="email"
+label="Email del pagador"
+error={errors.email_2_opcional?.message}
+/>
+<Input
+{...register('movil_2_opcional')}
+type="tel"
+label="Móvil del pagador"
+error={errors.movil_2_opcional?.message}
+placeholder="612345678"
+/>
+</div>
+)}
+</div>
+{}
+<div className="bg-white rounded-lg shadow-sm border border-secondary-200 p-6">
+<h2 className="text-lg font-semibold text-secondary-900 mb-4">Datos de Facturación</h2>
+<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+<Select
+{...register('datos_fiscales')}
+label="Tipo de datos fiscales *"
+options={FISCAL_DATA_TYPES}
+error={errors.datos_fiscales?.message}
+/>
+<Select
+{...register('transferencia_anticipada')}
+label="¿Transferencia anticipada? *"
+options={YES_NO_OPTIONS}
+error={errors.transferencia_anticipada?.message}
+/>
+</div>
+</div>
+{}
+<div className="bg-white rounded-lg shadow-sm border border-secondary-200 p-6">
+<h2 className="text-lg font-semibold text-secondary-900 mb-4">Datos de Pago</h2>
+<div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+<Select
+{...register('modalidad_de_pago')}
+label="Modalidad de pago *"
+options={PAYMENT_METHODS}
+error={errors.modalidad_de_pago?.message}
+/>
+<Select
+{...register('numero_pagos_meses', { valueAsNumber: true })}
+label="Número de pagos *"
+options={PAYMENT_INSTALLMENTS}
+error={errors.numero_pagos_meses?.message}
+/>
+<Input
+{...register('fecha_pago')}
+type="date"
+label="Fecha de pago *"
+error={errors.fecha_pago?.message}
+/>
+</div>
+</div>
+{}
+<div className="bg-white rounded-lg shadow-sm border border-secondary-200 p-6">
+<h2 className="text-lg font-semibold text-secondary-900 mb-4">Datos del Curso</h2>
+<div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+<Select
+{...register('curso')}
+label="Curso *"
+options={cursosOptions}
+error={errors.curso?.message}
+/>
+<Input
+{...register('formacion')}
+label="Formación *"
+error={errors.formacion?.message}
+/>
+<Input
+{...register('costo_formacion')}
+label="Costo de la formación (€) *"
+error={errors.costo_formacion?.message}
+placeholder="1299.99"
+/>
+</div>
+</div>
+{}
+<div className="bg-white rounded-lg shadow-sm border border-secondary-200 p-6">
+<h2 className="text-lg font-semibold text-secondary-900 mb-4">Bonus Incluidos</h2>
+<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+<div className="space-y-3">
+<label className="flex items-center">
+<input
+{...register('bonus.mentoria_individualizada_1')}
+type="checkbox"
+className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-secondary-300 rounded"
+/>
+<span className="ml-2 text-sm text-secondary-700">Mentoría individualizada 1</span>
+</label>
+<label className="flex items-center">
+<input
+{...register('bonus.mentoria_individualizada_2')}
+type="checkbox"
+className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-secondary-300 rounded"
+/>
+<span className="ml-2 text-sm text-secondary-700">Mentoría individualizada 2</span>
+</label>
+</div>
+<div className="space-y-3">
+<label className="flex items-center">
+<input
+{...register('bonus.mentoria_individualizada_3')}
+type="checkbox"
+className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-secondary-300 rounded"
+/>
+<span className="ml-2 text-sm text-secondary-700">Mentoría individualizada 3</span>
+</label>
+<label className="flex items-center">
+<input
+{...register('bonus.mentoria_validacion_productos')}
+type="checkbox"
+className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-secondary-300 rounded"
+/>
+<span className="ml-2 text-sm text-secondary-700">Mentoría validación de productos</span>
+</label>
+</div>
+</div>
+</div>
+{}
+<div className="bg-white rounded-lg shadow-sm border border-secondary-200 p-6">
+<h2 className="text-lg font-semibold text-secondary-900 mb-4">Otros Detalles</h2>
+<textarea
+{...register('otros_detalles')}
+rows={4}
+className="w-full px-3 py-2 border border-secondary-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+placeholder="Información adicional, notas especiales, etc."
+/>
+{errors.otros_detalles && (
+<p className="mt-1 text-sm text-error-600">{errors.otros_detalles.message}</p>
+)}
+</div>
+{}
+<div className="bg-white rounded-lg shadow-sm border border-secondary-200 p-6">
+<h2 className="text-lg font-semibold text-secondary-900 mb-4">Asignaciones</h2>
+<div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+<Select
+{...register('closer_de_cierre')}
+label="Closer de cierre *"
+options={closersOptions}
+error={errors.closer_de_cierre?.message}
+/>
+<Input
+{...register('setter')}
+label="Setter *"
+error={errors.setter?.message}
+/>
+<Select
+{...register('urgencia_contacto')}
+label="Urgencia de contacto *"
+options={CONTACT_URGENCY_OPTIONS}
+error={errors.urgencia_contacto?.message}
+/>
+</div>
+</div>
+{}
+<div className="flex justify-end space-x-4">
+<Button
+type="button"
+variant="outline"
+onClick={() => reset()}
+>
+Limpiar Formulario
+</Button>
+<Button
+type="submit"
+isLoading={isSubmitting}
+disabled={isSubmitting}
+>
+Crear Venta
+</Button>
+</div>
+</form>
 </div>
 );
 };
-export default CloserDetailPage;
+export default SalesFormPage;
+
+==================================================
+File: ../../types/common.types.ts
+==================================================
+
+export interface BaseEntity {
+id: string;
+createdAt: Date;
+updatedAt: Date;
+}
+export interface PaginationParams {
+page: number;
+limit: number;
+sortBy?: string;
+sortOrder?: 'asc' | 'desc';
+}
+export interface PaginatedResponse<T> {
+data: T[];
+pagination: {
+page: number;
+limit: number;
+total: number;
+totalPages: number;
+};
+}
+export interface SelectOption {
+value: string;
+label: string;
+disabled?: boolean;
+}
+export interface Toast {
+id: string;
+type: 'success' | 'error' | 'warning' | 'info';
+title: string;
+message?: string;
+duration?: number;
+}
+export interface ApiError {
+message: string;
+code: string;
+details?: Record<string, unknown>;
+}
+export interface LoadingState {
+isLoading: boolean;
+error: ApiError | null;
+}
+export interface FormField {
+name: string;
+label: string;
+type: 'text' | 'email' | 'tel' | 'password' | 'number' | 'textarea' | 'select' | 'file' | 'checkbox' | 'radio' | 'date';
+placeholder?: string;
+required?: boolean;
+options?: SelectOption[];
+validation?: Record<string, unknown>;
+}
+export interface DashboardMetric {
+id: string;
+title: string;
+value: number;
+change: number;
+changeType: 'increase' | 'decrease' | 'neutral';
+format: 'number' | 'currency' | 'percentage';
+icon?: string;
+}
+
+==================================================
+File: ../../types/sales.types.ts
+==================================================
+
+import { BaseEntity } from './common.types';
+export enum SaleStatus {
+DRAFT = 'DRAFT',
+PENDING_PAYMENT = 'PENDING_PAYMENT',
+PAYMENT_CONFIRMED = 'PAYMENT_CONFIRMED',
+ENROLLED = 'ENROLLED',
+CANCELLED = 'CANCELLED',
+REFUNDED = 'REFUNDED'
+}
+export enum PaymentMethod {
+HOTMART = 'Hotmart',
+SEQURA = 'Sequra',
+STRIPE = 'Stripe',
+TRANSFERENCIA = 'Transferencia',
+SEQURA_PASS = 'Sequra Pass'
+}
+export enum PersonType {
+MISMO_CLIENTE = 'MISMO_CLIENTE',
+OTRA_PERSONA = 'OTRA_PERSONA'
+}
+export enum FiscalDataType {
+PERSONA_FISICA = 'PERSONA_FISICA',
+AUTONOMO = 'AUTONOMO',
+EMPRESA = 'EMPRESA'
+}
+export enum ContactUrgency {
+NO_URGENTE = 'No Urgente',
+URGENTE = 'Urgente'
+}
+export interface Sale extends BaseEntity {
+nombre: string;
+email: string;
+movil: string;
+socio_o_pagador: PersonType;
+nombre_2_opcional?: string;
+email_2_opcional?: string;
+movil_2_opcional?: string;
+datos_fiscales: FiscalDataType;
+transferencia_anticipada: boolean;
+modalidad_de_pago: PaymentMethod;
+numero_pagos_meses: number;
+fecha_pago: Date;
+curso: string;
+formacion: string;
+costo_formacion: number;
+bonus: {
+mentoria_individualizada_1: boolean;
+mentoria_individualizada_2: boolean;
+mentoria_individualizada_3: boolean;
+mentoria_validacion_productos: boolean;
+};
+otros_detalles?: string;
+closer_de_cierre: string;
+setter: string;
+urgencia_contacto: ContactUrgency;
+status: SaleStatus;
+paymentReference?: string;
+notes: SaleNote[];
+totalAmount: number;
+commission: number;
+courseData?: {
+title: string;
+thumbnail?: string;
+};
+closerData?: {
+firstName: string;
+lastName: string;
+avatar?: string;
+};
+}
+export interface SaleNote {
+id: string;
+content: string;
+author: {
+id: string;
+name: string;
+};
+createdAt: Date;
+isPrivate: boolean;
+}
+export interface SalesFormData {
+nombre: string;
+email: string;
+movil: string;
+socio_o_pagador: PersonType;
+nombre_2_opcional?: string;
+email_2_opcional?: string;
+movil_2_opcional?: string;
+datos_fiscales: FiscalDataType;
+transferencia_anticipada: 'SI' | 'NO';
+modalidad_de_pago: PaymentMethod;
+numero_pagos_meses: number;
+fecha_pago: string;
+curso: string;
+formacion: string;
+costo_formacion: string;
+bonus: {
+mentoria_individualizada_1: boolean;
+mentoria_individualizada_2: boolean;
+mentoria_individualizada_3: boolean;
+mentoria_validacion_productos: boolean;
+};
+otros_detalles?: string;
+closer_de_cierre: string;
+setter: string;
+urgencia_contacto: ContactUrgency;
+}
+export interface SalesFilters {
+search?: string;
+status?: SaleStatus;
+paymentMethod?: PaymentMethod;
+closerId?: string;
+courseId?: string;
+dateFrom?: Date;
+dateTo?: Date;
+urgency?: ContactUrgency;
+}
+export interface SalesStats {
+totalSales: number;
+totalRevenue: number;
+averageTicket: number;
+conversionRate: number;
+pendingPayments: number;
+completedSales: number;
+monthlyGrowth: number;
+topCourse: {
+id: string;
+title: string;
+salesCount: number;
+};
+topCloser: {
+id: string;
+name: string;
+salesCount: number;
+};
+}
+export interface CourseRevenue {
+courseId: string;
+totalRevenue: number;
+totalSales: number;
+averageTicket: number;
+monthlyRevenue: {
+month: string;
+revenue: number;
+sales: number;
+}[];
+closerCommissions: {
+closerId: string;
+closerName: string;
+salesCount: number;
+totalCommission: number;
+pendingCommission: number;
+paidCommission: number;
+}[];
+paymentStatus: {
+paid: number;
+pending: number;
+overdue: number;
+cancelled: number;
+};
+students: {
+id: string;
+name: string;
+email: string;
+enrollmentDate: Date;
+paymentStatus: SaleStatus;
+amountPaid: number;
+totalAmount: number;
+nextPaymentDate?: Date;
+closerName: string;
+}[];
+}
+
+==================================================
+File: ../../utils/validators.ts
+==================================================
+
+import { z } from 'zod';
+import { SalesFormData, LoginCredentials, RegisterData, CloserFormData } from '@types';
+export const emailSchema = z
+.string()
+.min(1, 'El email es obligatorio')
+.email('Email inválido')
+.toLowerCase();
+export const passwordSchema = z
+.string()
+.min(8, 'La contraseña debe tener al menos 8 caracteres')
+.regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/, 'Debe contener al menos una mayúscula, una minúscula y un número');
+export const phoneSchema = z
+.string()
+.regex(/^[6-9]\d{8}$/, 'Formato de móvil español inválido (9 dígitos, empezando por 6-9)');
+export const nameSchema = z
+.string()
+.min(2, 'Mínimo 2 caracteres')
+.max(50, 'Máximo 50 caracteres')
+.regex(/^[a-zA-ZñÑáéíóúÁÉÍÓÚ\s]+$/, 'Solo letras y espacios');
+export const loginSchema = z.object({
+email: emailSchema,
+password: z.string().min(1, 'La contraseña es obligatoria'),
+rememberMe: z.boolean().optional()
+});
+export const registerSchema = z.object({
+email: emailSchema,
+password: passwordSchema,
+confirmPassword: z.string(),
+firstName: nameSchema,
+lastName: nameSchema,
+phone: phoneSchema.optional(),
+role: z.enum(['ADMIN', 'OPERADOR', 'CLOSER'])
+}).refine((data) => data.password === data.confirmPassword, {
+message: 'Las contraseñas no coinciden',
+path: ['confirmPassword']
+});
+export const contractSignatureSchema = z.object({
+studentId: z.string().uuid('ID de estudiante inválido'),
+courseId: z.string().uuid('ID de curso inválido'),
+digitalSignature: z.string().min(1, 'La firma digital es obligatoria'),
+acceptedTerms: z.boolean().refine(val => val === true, {
+message: 'Debe aceptar los términos y condiciones'
+}),
+ipAddress: z.string(),
+userAgent: z.string(),
+signatureDate: z.date(),
+witnessEmail: emailSchema.optional().or(z.literal(''))
+});
+export const salesFormSchema = z.object({
+nombre: nameSchema,
+email: emailSchema,
+movil: phoneSchema,
+socio_o_pagador: z.enum(['MISMO_CLIENTE', 'OTRA_PERSONA']),
+nombre_2_opcional: nameSchema.optional().or(z.literal('')),
+email_2_opcional: emailSchema.optional().or(z.literal('')),
+movil_2_opcional: phoneSchema.optional().or(z.literal('')),
+datos_fiscales: z.enum(['PERSONA_FISICA', 'AUTONOMO', 'EMPRESA']),
+transferencia_anticipada: z.enum(['SI', 'NO']),
+modalidad_de_pago: z.enum(['Hotmart', 'Sequra', 'Stripe', 'Transferencia', 'Sequra Pass']),
+numero_pagos_meses: z.union([
+z.literal(1), z.literal(2), z.literal(3), z.literal(6),
+z.literal(9), z.literal(12), z.literal(18), z.literal(24)
+]),
+fecha_pago: z.string().min(1, 'La fecha de pago es obligatoria'),
+curso: z.string().uuid('ID de curso inválido'),
+formacion: z.string().min(1, 'La formación es obligatoria'),
+costo_formacion: z.string().regex(/^\d+(\.\d{2})?$/, 'Formato de precio inválido (ej: 1299.99)'),
+bonus: z.object({
+mentoria_individualizada_1: z.boolean(),
+mentoria_individualizada_2: z.boolean(),
+mentoria_individualizada_3: z.boolean(),
+mentoria_validacion_productos: z.boolean()
+}),
+otros_detalles: z.string().max(500, 'Máximo 500 caracteres').optional(),
+closer_de_cierre: z.string().uuid('ID de closer inválido'),
+setter: z.string().min(1, 'El setter es obligatorio'),
+urgencia_contacto: z.enum(['No Urgente', 'Urgente'])
+});
+export const courseFormSchema = z.object({
+title: z.string().min(1, 'El título es obligatorio').max(100, 'Máximo 100 caracteres'),
+description: z.string().min(1, 'La descripción es obligatoria').max(2000, 'Máximo 2000 caracteres'),
+shortDescription: z.string().min(1, 'La descripción corta es obligatoria').max(300, 'Máximo 300 caracteres'),
+price: z.number().min(0, 'El precio debe ser mayor a 0'),
+discountPrice: z.number().min(0, 'El precio con descuento debe ser mayor a 0').optional(),
+duration: z.number().min(1, 'La duración debe ser mayor a 0'),
+level: z.enum(['BEGINNER', 'INTERMEDIATE', 'ADVANCED']),
+category: z.string().min(1, 'La categoría es obligatoria'),
+tags: z.array(z.string()).min(1, 'Debe seleccionar al menos una etiqueta'),
+features: z.array(z.string()).min(1, 'Debe agregar al menos una característica'),
+requirements: z.array(z.string()).min(1, 'Debe agregar al menos un requisito'),
+whatYoullLearn: z.array(z.string()).min(1, 'Debe agregar al menos un objetivo de aprendizaje'),
+contractRequired: z.boolean(),
+contractTerms: z.string().optional(),
+requiresSignature: z.boolean(),
+contractValidityDays: z.number().min(1).max(365).optional()
+});
+export const closerFormSchema = z.object({
+firstName: nameSchema,
+lastName: nameSchema,
+email: emailSchema,
+phone: phoneSchema,
+specialties: z.array(z.string()).min(1, 'Debe seleccionar al menos una especialidad'),
+commissionRate: z.number().min(0).max(100, 'La comisión debe estar entre 0 y 100%'),
+biography: z.string().max(1000, 'Máximo 1000 caracteres').optional(),
+experience: z.number().min(0, 'La experiencia debe ser mayor o igual a 0'),
+languages: z.array(z.string()).min(1, 'Debe seleccionar al menos un idioma'),
+timezone: z.string().min(1, 'La zona horaria es obligatoria'),
+schedule: z.object({
+monday: z.object({
+isAvailable: z.boolean(),
+startTime: z.string().regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/, 'Formato de hora inválido'),
+endTime: z.string().regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/, 'Formato de hora inválido')
+}),
+tuesday: z.object({
+isAvailable: z.boolean(),
+startTime: z.string().regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/, 'Formato de hora inválido'),
+endTime: z.string().regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/, 'Formato de hora inválido')
+}),
+wednesday: z.object({
+isAvailable: z.boolean(),
+startTime: z.string().regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/, 'Formato de hora inválido'),
+endTime: z.string().regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/, 'Formato de hora inválido')
+}),
+thursday: z.object({
+isAvailable: z.boolean(),
+startTime: z.string().regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/, 'Formato de hora inválido'),
+endTime: z.string().regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/, 'Formato de hora inválido')
+}),
+friday: z.object({
+isAvailable: z.boolean(),
+startTime: z.string().regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/, 'Formato de hora inválido'),
+endTime: z.string().regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/, 'Formato de hora inválido')
+}),
+saturday: z.object({
+isAvailable: z.boolean(),
+startTime: z.string().regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/, 'Formato de hora inválido'),
+endTime: z.string().regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/, 'Formato de hora inválido')
+}),
+sunday: z.object({
+isAvailable: z.boolean(),
+startTime: z.string().regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/, 'Formato de hora inválido'),
+endTime: z.string().regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/, 'Formato de hora inválido')
+})
+})
+});
+export const validateForm = <T>(schema: z.ZodSchema<T>, data: unknown): { success: boolean; data?: T; errors?: Record<string, string> } => {
+try {
+const validatedData = schema.parse(data);
+return { success: true, data: validatedData };
+} catch (error) {
+if (error instanceof z.ZodError) {
+const errors: Record<string, string> = {};
+error.errors.forEach((err) => {
+if (err.path) {
+errors[err.path.join('.')] = err.message;
+}
+});
+return { success: false, errors };
+}
+return { success: false, errors: { general: 'Error de validación desconocido' } };
+}
+};
+export const validateLoginCredentials = (data: unknown) => validateForm(loginSchema, data);
+export const validateRegisterData = (data: unknown) => validateForm(registerSchema, data);
+export const validateSalesForm = (data: unknown) => validateForm(salesFormSchema, data);
+export const validateCourseForm = (data: unknown) => validateForm(courseFormSchema, data);
+export const validateCloserForm = (data: unknown) => validateForm(closerFormSchema, data);
+export const validateContractSignature = (data: unknown) => validateForm(contractSignatureSchema, data);
