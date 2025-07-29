@@ -52,7 +52,6 @@ function generateTree(files, baseDir) {
   return printTree(tree);
 }
 
-// Función corregida para parsear imports de un archivo
 // Función corregida para parsear imports Y re-exports de un archivo
 function parseImports(content, filePath) {
   const imports = new Set();
@@ -216,6 +215,7 @@ function parseImports(content, filePath) {
 
   return Array.from(imports);
 }
+
 // Función para verificar si un import es una dependencia local
 function isLocalDependency(importPath) {
   // Si empieza con ./ o ../ es local
@@ -321,7 +321,7 @@ async function resolveImportPath(
 }
 
 // Función para minificar contenido basado en el tipo de archivo
-function minifyContent(content, filePath, minifyLevel = "medium") {
+function minifyContent(content, filePath, minifyLevel = "aggressive") {
   const extension = path.extname(filePath).toLowerCase();
 
   // Función base para eliminar comentarios y espacios
@@ -492,6 +492,7 @@ async function followImports(
   const files = [];
   const queue = [{ file: entryFile, depth: 0 }];
   const packageJsonPath = await findPackageJsonFromFile(entryFile);
+  
   while (queue.length > 0) {
     const { file: currentFile, depth } = queue.shift();
     const normalizedPath = path.resolve(currentFile);
@@ -541,6 +542,62 @@ async function followImports(
   return files;
 }
 
+// Función para procesar múltiples archivos de entrada
+async function processMultipleEntryFiles(entryFiles, spinner, maxDepth) {
+  const allFiles = [];
+  const processedFiles = new Set();
+  
+  for (const entryFile of entryFiles) {
+    spinner.text = chalk.blue(`Processing entry file: ${path.basename(entryFile)}`);
+    
+    try {
+      const stats = await fs.stat(entryFile);
+      if (!stats.isFile()) {
+        spinner.warn(chalk.yellow(`Warning: ${entryFile} is not a valid file, skipping`));
+        continue;
+      }
+    } catch (error) {
+      spinner.warn(chalk.yellow(`Warning: Entry file not found: ${entryFile}, skipping`));
+      continue;
+    }
+    
+    const files = await followImports(entryFile, processedFiles, spinner, maxDepth);
+    allFiles.push(...files);
+  }
+  
+  // Eliminar duplicados manteniendo el orden
+  return [...new Set(allFiles)];
+}
+
+// Función para determinar el directorio base común de múltiples archivos
+function findCommonBaseDirectory(files) {
+  if (files.length === 0) return process.cwd();
+  if (files.length === 1) return path.dirname(files[0]);
+  
+  const resolvedFiles = files.map(file => path.resolve(file));
+  const pathParts = resolvedFiles.map(file => file.split(path.sep));
+  
+  // Encontrar la parte común más larga
+  let commonParts = pathParts[0];
+  
+  for (let i = 1; i < pathParts.length; i++) {
+    const currentParts = pathParts[i];
+    const newCommonParts = [];
+    
+    for (let j = 0; j < Math.min(commonParts.length, currentParts.length); j++) {
+      if (commonParts[j] === currentParts[j]) {
+        newCommonParts.push(commonParts[j]);
+      } else {
+        break;
+      }
+    }
+    
+    commonParts = newCommonParts;
+  }
+  
+  return commonParts.length > 0 ? commonParts.join(path.sep) : process.cwd();
+}
+
 program
   .name("fileweaver")
   .description(
@@ -554,7 +611,7 @@ program
   .option("-d, --directory <path>", "directory path", process.cwd())
   .option("-h, --headers", "add file headers to content", false)
   .option("-o, --output <file>", "output file name", "output.txt")
-  .option("-f, --follow-imports <file>", "follow imports from entry file")
+  .option("-f, --follow-imports <files...>", "follow imports from entry files (can specify multiple files)")
   .option(
     "--max-depth <number>",
     "maximum depth for following imports (default: unlimited)",
@@ -563,7 +620,7 @@ program
   .option(
     "-m, --minify [level]",
     "minify content before concatenation (light|medium|aggressive)",
-    "medium"
+    "aggressive"
   )
   .option("--stats", "show compression statistics", false)
   .parse(process.argv);
@@ -584,32 +641,22 @@ async function weaveFiles() {
     let files = [];
     let directory = path.resolve(options.directory);
 
-    if (options.followImports) {
-      // Modo follow imports
-      spinner.start(chalk.blue("Following imports..."));
+    if (options.followImports && options.followImports.length > 0) {
+      // Modo follow imports con soporte para múltiples archivos
+      spinner.start(chalk.blue("Following imports from multiple entry files..."));
 
-      const entryFile = path.resolve(options.followImports);
-
-      try {
-        const stats = await fs.stat(entryFile);
-        if (!stats.isFile()) {
-          spinner.fail(chalk.red("Error: Entry file is not a valid file"));
-          process.exit(1);
-        }
-      } catch (error) {
-        spinner.fail(
-          chalk.red(`Error: Entry file not found: ${error.message}`)
-        );
+      const entryFiles = options.followImports.map(file => path.resolve(file));
+      
+      files = await processMultipleEntryFiles(entryFiles, spinner, options.maxDepth);
+      
+      // Determinar el directorio base común para todos los archivos
+      directory = findCommonBaseDirectory([...entryFiles, ...files]);
+      
+      if (files.length === 0) {
+        spinner.fail(chalk.red("Error: No valid entry files found or no files to process"));
         process.exit(1);
       }
-
-      files = await followImports(
-        entryFile,
-        new Set(),
-        spinner,
-        options.maxDepth
-      );
-      directory = path.dirname(entryFile);
+      
     } else {
       // Modo tradicional por directorio
       spinner.start(chalk.blue("Scanning directory..."));
@@ -667,7 +714,9 @@ async function weaveFiles() {
       process.exit(1);
     }
 
-    const modeText = options.followImports ? "imports chain" : "directory scan";
+    const modeText = options.followImports 
+      ? `imports chain from ${options.followImports.length} entry file${options.followImports.length > 1 ? 's' : ''}` 
+      : "directory scan";
     const minifyText = options.minify ? ` (minify: ${options.minify})` : "";
     spinner.succeed(
       chalk.green(
@@ -676,8 +725,6 @@ async function weaveFiles() {
     );
 
     const tree = generateTree(files, directory);
-
-    // Mostrar árbol de archivos
 
     // Iniciar la barra de progreso
     progressBar.start(files.length, 0, { file: "Starting..." });
@@ -743,7 +790,7 @@ async function weaveFiles() {
     await fs.writeFile(outputPath, output.trim());
 
     const modeDescription = options.followImports
-      ? `Following imports from ${path.basename(options.followImports)}${
+      ? `Following imports from ${options.followImports.length} entry file${options.followImports.length > 1 ? 's' : ''}: ${options.followImports.map(f => path.basename(f)).join(', ')}${
           options.maxDepth
             ? ` (max depth: ${options.maxDepth})`
             : " (unlimited depth)"
@@ -756,6 +803,11 @@ async function weaveFiles() {
         { length: totalOriginalSize },
         { length: totalMinifiedSize }
       );
+      
+      console.log(chalk.cyan("\nCompression Statistics:"));
+      console.log(`${chalk.green("Original size:")} ${totalOriginalSize.toLocaleString()} bytes`);
+      console.log(`${chalk.green("Minified size:")} ${totalMinifiedSize.toLocaleString()} bytes`);
+      console.log(`${chalk.green("Reduction:")} ${stats.reduction.toLocaleString()} bytes (${stats.percentage}%)`);
     }
 
     spinner.succeed(
