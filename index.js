@@ -53,11 +53,12 @@ function generateTree(files, baseDir) {
 }
 
 // Función corregida para parsear imports de un archivo
+// Función corregida para parsear imports Y re-exports de un archivo
 function parseImports(content, filePath) {
   const imports = new Set();
 
   // Procesamos línea por línea primero
-  const lines = content.split("\n").slice(0, 10); // Limitar a las primeras 1000 líneas para evitar problemas de zrendimiento
+  const lines = content.split("\n").slice(0, 1000); // Aumenté el límite y corregí el comentario
 
   for (const line of lines) {
     const trimmedLine = line.trim();
@@ -72,7 +73,6 @@ function parseImports(content, filePath) {
       continue;
     }
 
-    // Probamos cada patrón sin usar continue para permitir múltiples matches
     let match;
 
     // 1. ES6 imports con from - MÁS ESPECÍFICO PRIMERO
@@ -121,10 +121,60 @@ function parseImports(content, filePath) {
     if (match) {
       imports.add(match[1]);
     }
+
+    // *** NUEVOS PATRONES PARA RE-EXPORTS ***
+
+    // 7. Export named con from: export { something } from '...'
+    match = trimmedLine.match(
+      /export\s+\{[^}]*\}\s+from\s+['"`]([^'"`]+)['"`]/
+    );
+    if (match) {
+      imports.add(match[1]);
+    }
+
+    // 8. Export type con from: export type { something } from '...'
+    match = trimmedLine.match(
+      /export\s+type\s+\{[^}]*\}\s+from\s+['"`]([^'"`]+)['"`]/
+    );
+    if (match) {
+      imports.add(match[1]);
+    }
+
+    // 9. Export all: export * from '...'
+    match = trimmedLine.match(
+      /export\s+\*\s+from\s+['"`]([^'"`]+)['"`]/
+    );
+    if (match) {
+      imports.add(match[1]);
+    }
+
+    // 10. Export all as: export * as something from '...'
+    match = trimmedLine.match(
+      /export\s+\*\s+as\s+\w+\s+from\s+['"`]([^'"`]+)['"`]/
+    );
+    if (match) {
+      imports.add(match[1]);
+    }
+
+    // 11. Export default from: export { default } from '...'
+    match = trimmedLine.match(
+      /export\s+\{\s*default\s*(?:,\s*[^}]*)?\}\s+from\s+['"`]([^'"`]+)['"`]/
+    );
+    if (match) {
+      imports.add(match[1]);
+    }
+
+    // 12. Export default as: export { default as something } from '...'
+    match = trimmedLine.match(
+      /export\s+\{\s*default\s+as\s+\w+\s*(?:,\s*[^}]*)?\}\s+from\s+['"`]([^'"`]+)['"`]/
+    );
+    if (match) {
+      imports.add(match[1]);
+    }
   }
 
-  // Procesamiento adicional para imports multilínea
-  // Esto maneja casos donde el import se extiende por múltiples líneas
+  // Procesamiento adicional para imports/exports multilínea
+  // Esto maneja casos donde el import/export se extiende por múltiples líneas
 
   // ES6 imports multilínea
   const multilineImportRegex =
@@ -145,6 +195,22 @@ function parseImports(content, filePath) {
   const multilineDefaultImportRegex =
     /import\s+\w+\s*,\s*\{[^}]*\}\s*from\s*['"`]([^'"`]+)['"`]/gs;
   while ((match = multilineDefaultImportRegex.exec(content)) !== null) {
+    imports.add(match[1]);
+  }
+
+  // *** NUEVOS REGEX MULTILÍNEA PARA RE-EXPORTS ***
+
+  // Export multilínea con from
+  const multilineExportRegex =
+    /export\s*\{[^}]*\}\s*from\s*['"`]([^'"`]+)['"`]/gs;
+  while ((match = multilineExportRegex.exec(content)) !== null) {
+    imports.add(match[1]);
+  }
+
+  // Export type multilínea con from
+  const multilineExportTypeRegex =
+    /export\s+type\s*\{[^}]*\}\s*from\s*['"`]([^'"`]+)['"`]/gs;
+  while ((match = multilineExportTypeRegex.exec(content)) !== null) {
     imports.add(match[1]);
   }
 
