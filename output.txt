@@ -1,0 +1,116 @@
+==================================================
+File: CloserDetailPage.tsx
+==================================================
+
+import React, { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { CloserDashboardData } from '@types';
+import { useClosers } from '@/hooks/useClosers';
+import LoadingSpinner from '@components/ui/LoadingSpinner';
+import CloserHeader from '@/components/closers/closerDetailPage/CloserHeader';
+import CloserMetrics from '@/components/closers/closerDetailPage/CloserMetrics';
+import CloserModals from '@/components/closers/closerDetailPage/CloserModals';
+import CloserTabs from '@/components/closers/closerDetailPage/tabs/CloserTabs';
+const CloserDetailPage: React.FC = () => {
+const { id } = useParams<{ id: string }>();
+const navigate = useNavigate();
+const { fetchCloserDashboard, deleteCloser, activateCloser, suspendCloser, isLoading } = useClosers();
+const [dashboardData, setDashboardData] = useState<CloserDashboardData | null>(null);
+const [showDeleteModal, setShowDeleteModal] = useState(false);
+const [actionLoading, setActionLoading] = useState(false);
+const [activeTab, setActiveTab] = useState<'overview' | 'clients' | 'sales' | 'commissions' | 'courses' | 'performance' | 'goals'>('overview');
+const [filters, setFilters] = useState({
+clients: '',
+clientsStatus: '',
+clientsPayment: '',
+sales: '',
+commissions: ''
+});
+const [selectedClientDetail, setSelectedClientDetail] = useState<any>(null);
+useEffect(() => {
+if (id) {
+loadCloserDashboard();
+}
+}, [id]);
+const loadCloserDashboard = async () => {
+if (!id) return;
+const data = await fetchCloserDashboard(id);
+if (data) {
+setDashboardData(data);
+}
+};
+const handleDelete = async () => {
+if (!dashboardData?.closer) return;
+setActionLoading(true);
+const success = await deleteCloser(dashboardData.closer.id);
+if (success) {
+navigate('/closers');
+}
+setActionLoading(false);
+setShowDeleteModal(false);
+};
+const handleActivate = async () => {
+if (!dashboardData?.closer) return;
+setActionLoading(true);
+const updatedCloser = await activateCloser(dashboardData.closer.id);
+if (updatedCloser) {
+setDashboardData(prev => prev ? { ...prev, closer: updatedCloser } : null);
+}
+setActionLoading(false);
+};
+const handleSuspend = async () => {
+if (!dashboardData?.closer) return;
+setActionLoading(true);
+const updatedCloser = await suspendCloser(dashboardData.closer.id);
+if (updatedCloser) {
+setDashboardData(prev => prev ? { ...prev, closer: updatedCloser } : null);
+}
+setActionLoading(false);
+};
+const updateFilter = (filterType: string, value: string) => {
+setFilters(prev => ({ ...prev, [filterType]: value }));
+};
+if (isLoading || !dashboardData) {
+return (
+<div className="min-h-screen flex items-center justify-center">
+<LoadingSpinner size="lg" text="Cargando perfil del closer..." />
+</div>
+);
+}
+const { closer, metrics, salesHistory, clients, commissions, performance, recentActivity, goals, courseCommissions } = dashboardData;
+return (
+<div className="max-w-7xl mx-auto space-y-6">
+<CloserHeader
+closer={closer}
+actionLoading={actionLoading}
+onNavigateBack={() => navigate('/closers')}
+onRefresh={loadCloserDashboard}
+onEdit={() => navigate(`/closers/${closer.id}/edit`)}
+onCall={() => window.open(`tel:${closer.phone}`)}
+onEmail={() => window.open(`mailto:${closer.email}`)}
+onActivate={handleActivate}
+onSuspend={handleSuspend}
+onDelete={() => setShowDeleteModal(true)}
+/>
+<CloserMetrics metrics={metrics} />
+<CloserTabs
+activeTab={activeTab}
+onTabChange={setActiveTab}
+dashboardData={dashboardData}
+filters={filters}
+onFilterChange={updateFilter}
+onClientDetailSelect={setSelectedClientDetail}
+/>
+<CloserModals
+showDeleteModal={showDeleteModal}
+onCloseDeleteModal={() => setShowDeleteModal(false)}
+onConfirmDelete={handleDelete}
+actionLoading={actionLoading}
+closer={closer}
+selectedClientDetail={selectedClientDetail}
+onCloseClientDetail={() => setSelectedClientDetail(null)}
+/>
+</div>
+);
+};
+export default CloserDetailPage;
