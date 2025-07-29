@@ -8,6 +8,142 @@ import ora from "ora";
 import cliProgress from "cli-progress";
 import chalk from "chalk";
 
+// Función para generar árbol del proyecto desde package.json
+async function generateProjectTree(baseDir) {
+  // Buscar package.json para determinar el directorio raíz del proyecto
+  let projectRoot = baseDir;
+  try {
+    const packageJsonPath = await findPackageJsonFromFile(path.join(baseDir, 'dummy'));
+    if (packageJsonPath) {
+      projectRoot = packageJsonPath;
+    }
+  } catch (error) {
+    // Si no se encuentra package.json, usar baseDir
+  }
+
+  // Patrones a ignorar (archivos y directorios comunes)
+  const ignorePatterns = [
+    'node_modules',
+    '.git',
+    '.svn',
+    '.hg',
+    'dist',
+    'build',
+    'out',
+    '.next',
+    '.nuxt',
+    '.cache',
+    '.temp',
+    '.tmp',
+    'tmp',
+    'coverage',
+    '.nyc_output',
+    '.coverage',
+    'logs',
+    '*.log',
+    '.env',
+    '.env.local',
+    '.env.development',
+    '.env.production',
+    '.DS_Store',
+    'Thumbs.db',
+    '*.swp',
+    '*.swo',
+    '.vscode',
+    '.idea',
+    '*.iml',
+    '.eslintcache',
+    '.tsbuildinfo',
+    'yarn-error.log',
+    'npm-debug.log*',
+    'lerna-debug.log*',
+    '.pnpm-debug.log*'
+  ];
+
+  // Función para verificar si un archivo/directorio debe ser ignorado
+  function shouldIgnore(itemPath) {
+    const basename = path.basename(itemPath);
+    
+    return ignorePatterns.some(pattern => {
+      if (pattern.includes('*')) {
+        // Manejar patrones con wildcards
+        const regex = new RegExp(pattern.replace(/\*/g, '.*'));
+        return regex.test(basename);
+      }
+      return basename === pattern || basename.startsWith(pattern);
+    });
+  }
+
+  // Función recursiva para construir el árbol
+  async function buildTree(dirPath, maxDepth = 3, currentDepth = 0) {
+    if (currentDepth >= maxDepth) return {};
+    
+    const tree = {};
+    
+    try {
+      const items = await fs.readdir(dirPath);
+      
+      for (const item of items.sort()) {
+        const itemPath = path.join(dirPath, item);
+        
+        if (shouldIgnore(itemPath)) continue;
+        
+        try {
+          const stats = await fs.stat(itemPath);
+          
+          if (stats.isDirectory()) {
+            // Es un directorio, construir subárbol
+            const subtree = await buildTree(itemPath, maxDepth, currentDepth + 1);
+            if (Object.keys(subtree).length > 0 || currentDepth < 2) {
+              tree[item + '/'] = subtree;
+            }
+          } else {
+            // Es un archivo
+            tree[item] = {};
+          }
+        } catch (error) {
+          // Ignorar errores de acceso a archivos individuales
+        }
+      }
+    } catch (error) {
+      // Ignorar errores de acceso al directorio
+    }
+    
+    return tree;
+  }
+
+  // Función para generar la representación en string del árbol
+  function printTree(node, prefix = "", isLast = true) {
+    const entries = Object.entries(node);
+    let result = "";
+
+    for (let [i, [key, value]] of entries.entries()) {
+      const isLastEntry = i === entries.length - 1;
+      const connector = isLastEntry ? "└── " : "├── ";
+      const newPrefix = prefix + (isLastEntry ? "    " : "│   ");
+
+      // Colorear directorios y archivos de manera diferente
+      const displayName = key.endsWith('/') 
+        ? chalk.blue.bold(key.slice(0, -1)) // Directorios en azul
+        : chalk.cyan(key); // Archivos en cian
+
+      result += prefix + connector + displayName + "\n";
+
+      if (Object.keys(value).length > 0) {
+        result += printTree(value, newPrefix, isLastEntry);
+      }
+    }
+
+    return result;
+  }
+
+  const tree = await buildTree(projectRoot);
+  return {
+    content: printTree(tree),
+    projectRoot
+  };
+}
+
 function generateTree(files, baseDir) {
   // Ordenar los archivos para una mejor visualización
   files = files.sort();
@@ -605,11 +741,11 @@ program
   )
   .version("1.4.1")
   .option("-r, --regex <pattern>", "regex pattern to match files")
-  .option("-t, --tree <true|false>", "add tree to output file")
+  .option("-t, --tree", "add project tree to output file", true)
   .option("-p, --prompt <prompt>", "add prompt to output file")
   .option("-ir, --ignoreregex <pattern>", "regex pattern to ignore files")
   .option("-d, --directory <path>", "directory path", process.cwd())
-  .option("-h, --headers", "add file headers to content", false)
+  .option("-h, --headers", "add file headers to content", true)
   .option("-o, --output <file>", "output file name", "output.txt")
   .option("-f, --follow-imports <files...>", "follow imports from entry files (can specify multiple files)")
   .option(
@@ -724,7 +860,24 @@ async function weaveFiles() {
       )
     );
 
-    const tree = generateTree(files, directory);
+    // Generar árbol del proyecto (mejorado)
+    let projectTree = "";
+    let projectRoot = directory;
+    
+    if (options.tree) {
+      spinner.start(chalk.blue("Generating project tree..."));
+      try {
+        const treeResult = await generateProjectTree(directory);
+        projectTree = treeResult.content;
+        projectRoot = treeResult.projectRoot;
+        spinner.succeed(chalk.green("Project tree generated"));
+      } catch (error) {
+        spinner.warn(chalk.yellow("Warning: Could not generate project tree, using processed files tree"));
+        projectTree = generateTree(files, directory);
+      }
+    }
+
+    const processedFilesTree = generateTree(files, directory);
 
     // Iniciar la barra de progreso
     progressBar.start(files.length, 0, { file: "Starting..." });
@@ -769,9 +922,17 @@ async function weaveFiles() {
     // Agregar árbol si está habilitada la opción
     if (options.tree) {
       output += "\n" + "=".repeat(50) + "\n";
-      output += "Directory Tree:\n";
+      output += "Project Structure:\n";
       output += "=".repeat(50) + "\n\n";
-      output += tree;
+      output += projectTree;
+      
+      // Agregar también el árbol de archivos procesados si es diferente
+      if (projectTree !== processedFilesTree && files.length < 50) {
+        output += "\n" + "=".repeat(50) + "\n";
+        output += "Processed Files:\n";
+        output += "=".repeat(50) + "\n\n";
+        output += processedFilesTree;
+      }
     }
 
     // Agregar prompt si está especificado
